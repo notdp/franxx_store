@@ -1,0 +1,86 @@
+/* FRANXX Logo 专用样式 */
+.franxx-logo-container {
+  position: relative;
+  display: inline-block;
+  background: none;
+  padding: 0;
+  border: none;
+  transform: none;
+  transition: all 0.3s ease;
+  box-shadow: none;
+}
+
+.franxx-logo-container:hover {
+  transform: scale(1.05);
+  background: none;
+  box-shadow: none;
+  border: none;
+}
+
+.franxx-logo {
+  font-family: 'Londrina Outline', sans-serif;
+  font-weight: 400;
+  font-size: 2rem;
+  letter-spacing: 0.12em;
+  color: #000000;
+  transform: none;
+  text-shadow: none;
+  filter: none;
+  position: relative;
+  display: block;
+  transition: all 0.3s ease;
+}
+
+.franxx-logo-container:hover .franxx-logo {
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
+}
+
+/* X字母效果 - 继承 Londrina Outline 字体 */
+.franxx-x {
+  position: relative;
+  display: inline-block;
+  font-weight: 400;
+  font-family: 'Londrina Outline', sans-serif;
+  text-shadow: none;
+  filter: none;
+  transition: all 0.3s ease;
+}
+
+/* 蓝色 X */
+.franxx-x.text-blue-600 {
+  color: #2563EB;
+}
+
+/* 红色 X */
+.franxx-x.text-red-600 {
+  color: #DC2626;
+}
+
+/* Logo 尺寸变体 */
+.franxx-logo-small .franxx-logo {
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
+}
+
+.franxx-logo-medium .franxx-logo {
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+}
+
+.franxx-logo-large .franxx-logo {
+  font-size: 2rem;
+  letter-spacing: 0.12em;
+}
+
+.franxx-logo-extra-large .franxx-logo {
+  font-size: 2.5rem;
+  letter-spacing: 0.15em;
+}
+
+/* 对于 X 字母也应用相同的尺寸 */
+.franxx-logo-small .franxx-x,
+.franxx-logo-medium .franxx-x,
+.franxx-logo-large .franxx-x,
+.franxx-logo-extra-large .franxx-x {
+  font-family: 'Londrina Outline', sans-serif;
+}

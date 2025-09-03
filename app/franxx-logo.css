@@ -1,0 +1,123 @@
+/* FRANXX Logo 专用样式 - 从原始 index.css 复制 */
+
+:root {
+  --font-franxx: var(--font-londrina), var(--font-orbitron), var(--font-rajdhani), monospace;
+  --font-franxx-secondary: var(--font-rajdhani), sans-serif;
+  --franxx-red: #DC2626;
+  --franxx-blue: #2563EB;
+  --franxx-logo-size: 1.5rem;
+  --franxx-logo-outline: 1px;
+  --franxx-logo-spacing: .1em;
+}
+
+.franxx-logo-container {
+  box-shadow: none;
+  background: none;
+  border: none;
+  padding: 0;
+  transition: all .3s;
+  display: inline-block;
+  position: relative;
+  transform: none;
+}
+
+.franxx-logo-container:hover {
+  box-shadow: none;
+  background: none;
+  border: none;
+  transform: scale(1.05);
+}
+
+.franxx-logo {
+  font-family: var(--font-franxx);
+  font-weight: 400;
+  font-size: var(--franxx-logo-size);
+  letter-spacing: var(--franxx-logo-spacing);
+  color: #000;
+  -webkit-text-stroke: var(--franxx-logo-outline) #000;
+  text-stroke: var(--franxx-logo-outline) #000;
+  text-shadow: none;
+  filter: none;
+  transition: all .3s;
+  display: block;
+  position: relative;
+  transform: none;
+}
+
+.franxx-logo-container:hover .franxx-logo {
+  filter: drop-shadow(0 0 8px #0000004d);
+}
+
+.franxx-logo-container:hover .franxx-x {
+  filter: none;
+}
+
+.franxx-x {
+  -webkit-text-stroke: var(--franxx-logo-outline);
+  text-stroke: var(--franxx-logo-outline);
+  text-shadow: none;
+  filter: none;
+  font-weight: 400;
+  transition: all .3s;
+  display: inline-block;
+  position: relative;
+}
+
+/* 尺寸变体 */
+.franxx-logo-small {
+  --franxx-logo-size: 1.25rem;
+  --franxx-logo-outline: .8px;
+  --franxx-logo-spacing: .08em;
+}
+
+.franxx-logo-medium {
+  --franxx-logo-size: 1.5rem;
+  --franxx-logo-outline: 1px;
+  --franxx-logo-spacing: .1em;
+}
+
+.franxx-logo-large {
+  --franxx-logo-size: 2rem;
+  --franxx-logo-outline: 1.2px;
+  --franxx-logo-spacing: .12em;
+}
+
+.franxx-logo-extra-large {
+  --franxx-logo-size: 2.5rem;
+  --franxx-logo-outline: 1.5px;
+  --franxx-logo-spacing: .15em;
+}
+
+/* 轮廓粗细变体 */
+.franxx-logo-thin-outline {
+  --franxx-logo-outline: .5px;
+}
+
+.franxx-logo-normal-outline {
+  --franxx-logo-outline: 1px;
+}
+
+.franxx-logo-thick-outline {
+  --franxx-logo-outline: 1.5px;
+}
+
+.franxx-logo-extra-thick-outline {
+  --franxx-logo-outline: 2px;
+}
+
+.franxx-logo-container:before {
+  display: none;
+}
+
+/* X字母颜色 - 覆盖text-stroke的黑色 */
+.franxx-x.text-blue-600 {
+  color: #2563EB;
+  -webkit-text-stroke-color: #2563EB;
+  text-stroke-color: #2563EB;
+}
+
+.franxx-x.text-red-600 {
+  color: #DC2626;
+  -webkit-text-stroke-color: #DC2626;
+  text-stroke-color: #DC2626;
+}
