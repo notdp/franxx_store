@@ -7,13 +7,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "./ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+import { SimpleUserMenu } from "./simple-user-menu";
 import {
   Menu,
   User,
@@ -34,25 +28,24 @@ export function Header({
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout } = useAuth();
 
-  // 检查用户是否为管理员（这里可以根据实际需求修改判断逻辑）
-  const isAdmin =
-    user?.email?.includes("admin") ||
-    user?.email?.includes("franxx");
+  // 使用角色判断是否为管理员
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
+  // 根据用户状态和角色动态生成导航菜单
   const navigation = [
     { name: "首页", page: "home" },
-    { name: "仪表盘", page: "orders" },
-    { name: "帮助", page: "faq" },
+    { name: "FAQ", page: "faq" },
   ];
-
-  const handleSignOut = async () => {
-    try {
-      await logout();
-      onNavigate("home");
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
-  };
+  
+  // 登录用户显示个人中心
+  if (user) {
+    navigation.splice(1, 0, { name: "个人中心", page: "orders" });
+  }
+  
+  // 管理员添加后台入口
+  if (isAdmin) {
+    navigation.push({ name: "后台", page: "admin" });
+  }
 
   const NavItems = () => (
     <>
@@ -76,10 +69,10 @@ export function Header({
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto max-w-7xl px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center">
-          {/* FRANXX.STORE 文字Logo */}
+        {/* Logo - 左侧 */}
+        <div className="flex items-center flex-1">
           <div className="franxx-logo-container franxx-logo-large franxx-logo-normal-outline">
             <span className="franxx-logo">
               FRAN
@@ -90,88 +83,15 @@ export function Header({
           </div>
         </div>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6">
+        {/* Desktop Navigation - 居中 */}
+        <nav className="hidden md:flex items-center space-x-6 absolute left-1/2 transform -translate-x-1/2">
           <NavItems />
-          {/* 管理员后台按钮 - 只有管理员可见 */}
-          {isAdmin && (
-            <button
-              onClick={() => onNavigate("admin")}
-              className={`px-3 py-2 transition-colors ${
-                currentPage === "admin"
-                  ? "text-primary bg-accent rounded-md"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              后台
-            </button>
-          )}
         </nav>
 
-        {/* User Area & Contact Info */}
-        <div className="hidden lg:flex items-center space-x-4">
+        {/* User Area & Contact Info - 右侧 */}
+        <div className="hidden lg:flex items-center space-x-4 flex-1 justify-end">
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="relative h-8 w-8 rounded-full"
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage
-                      src={user.avatar}
-                      alt={user.name}
-                    />
-                    <AvatarFallback>
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-56"
-                align="end"
-                forceMount
-              >
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user.name}</p>
-                    <p className="w-[200px] truncate text-sm text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onNavigate("profile")}
-                >
-                  <User className="mr-2 h-4 w-4" />
-                  <span>个人</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onNavigate("orders")}
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>仪表盘</span>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => onNavigate("admin")}
-                    >
-                      <Shield className="mr-2 h-4 w-4" />
-                      <span>后台</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>退出登录</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SimpleUserMenu onNavigate={onNavigate} />
           ) : (
             <Button
               variant="outline"
@@ -238,9 +158,14 @@ export function Header({
                       </button>
                     )}
                     <button
-                      onClick={() => {
-                        handleSignOut();
-                        setIsOpen(false);
+                      onClick={async () => {
+                        try {
+                          await logout();
+                          onNavigate("home");
+                          setIsOpen(false);
+                        } catch (error) {
+                          console.error("Sign out error:", error);
+                        }
                       }}
                       className="px-3 py-2 text-left transition-colors text-muted-foreground hover:text-foreground"
                     >

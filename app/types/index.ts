@@ -22,6 +22,8 @@ export interface Package {
   };
 }
 
+export type UserRole = 'user' | 'admin' | 'super_admin';
+
 export interface User {
   id: string;
   email: string;
@@ -29,6 +31,7 @@ export interface User {
   avatar?: string;
   provider: 'google' | 'github';
   created_at: string;
+  role: UserRole;
 }
 
 export interface Order {
@@ -58,6 +61,6 @@ export interface FAQ {
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (provider: 'google' | 'github') => Promise<void>;
+  signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: any }>;
   logout: () => Promise<void>;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, AuthContextType } from '../types';
+import { User, AuthContextType, UserRole } from '../types';
 import { supabase } from '../lib/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -13,7 +13,8 @@ const MOCK_USER: User = {
   name: '驾驶员 002',
   avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=64&h=64&fit=crop&crop=face&auto=format',
   provider: 'google',
-  created_at: new Date().toISOString()
+  created_at: new Date().toISOString(),
+  role: 'admin' as UserRole
 };
 
 export function useAuth() {
@@ -25,17 +26,36 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // 默认设置为模拟用户，方便调试
-  const [user, setUser] = useState<User | null>(MOCK_USER);
-  const [loading, setLoading] = useState(false); // 设置为false，跳过加载状态
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // 获取用户角色的辅助函数
+  const getUserRole = async (userId: string): Promise<UserRole> => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user role:', error);
+        return 'user';
+      }
+      
+      return data?.role || 'user';
+    } catch (error) {
+      console.error('Error in getUserRole:', error);
+      return 'user';
+    }
+  };
 
   useEffect(() => {
-    // 在开发环境中使用模拟用户，生产环境中使用真实认证
-    const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
+    // 检查是否使用模拟用户（可通过环境变量控制）
+    const USE_MOCK_USER = process.env.NEXT_PUBLIC_USE_MOCK_USER === 'true';
     
-    if (isDevelopment) {
-      // 开发环境：使用模拟用户
-      console.log('🚀 Development mode: Using mock user for debugging');
+    if (USE_MOCK_USER) {
+      console.log('🚀 Mock mode: Using mock user for debugging');
       setUser(MOCK_USER);
       setLoading(false);
       return;
@@ -43,19 +63,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 生产环境：使用真实的Supabase认证
     const getSession = async () => {
+      setLoading(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('Current session:', session);
+        
         if (session?.user) {
+          // 获取用户角色
+          const role = await getUserRole(session.user.id);
+          
           const userData: User = {
             id: session.user.id,
             email: session.user.email || '',
-            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'User',
+            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
             avatar: session.user.user_metadata?.avatar_url,
             provider: (session.user.app_metadata?.provider || 'google') as 'google' | 'github',
-            created_at: session.user.created_at
+            created_at: session.user.created_at,
+            role
           };
+          console.log('Setting user with role:', userData);
           setUser(userData);
         } else {
+          console.log('No session found');
           setUser(null);
         }
       } catch (error) {
@@ -70,17 +99,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session);
+      
       if (session?.user) {
+        // 获取用户角色
+        const role = await getUserRole(session.user.id);
+        
         const userData: User = {
           id: session.user.id,
           email: session.user.email || '',
-          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'User',
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
           avatar: session.user.user_metadata?.avatar_url,
           provider: (session.user.app_metadata?.provider || 'google') as 'google' | 'github',
-          created_at: session.user.created_at
+          created_at: session.user.created_at,
+          role
         };
+        console.log('Auth state change - Setting user with role:', userData);
         setUser(userData);
       } else {
+        console.log('Auth state change - No user');
         setUser(null);
       }
       setLoading(false);
@@ -89,48 +126,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (provider: 'google' | 'github') => {
+  const signInWithOAuth = async (provider: 'google' | 'github') => {
     try {
-      const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
+      const USE_MOCK_USER = process.env.NEXT_PUBLIC_USE_MOCK_USER === 'true';
       
-      if (isDevelopment) {
-        // 开发环境：模拟登录成功
+      if (USE_MOCK_USER) {
         console.log(`🚀 Mock login with ${provider}`);
         setUser(MOCK_USER);
-        return;
+        return { error: null };
       }
 
-      // 生产环境：真实登录
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin
+          redirectTo: `${window.location.origin}/auth/callback`
         }
       });
       
       if (error) {
         console.error('Login error:', error);
-        throw error;
+        return { error };
       }
-    } catch (error) {
+      
+      console.log('OAuth initiated:', data);
+      return { error: null };
+    } catch (error: any) {
       console.error('Login failed:', error);
-      throw error;
+      return { error };
     }
   };
 
   const logout = async () => {
     try {
-      const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
+      const USE_MOCK_USER = process.env.NEXT_PUBLIC_USE_MOCK_USER === 'true';
       
-      if (isDevelopment) {
-        // 开发环境：模拟登出，但立即重新设置为模拟用户
-        console.log('🚀 Mock logout (will remain logged in for debugging)');
-        // 可以选择是否在开发环境中允许登出
-        // setUser(null);
+      if (USE_MOCK_USER) {
+        console.log('🚀 Mock logout');
+        setUser(null);
         return;
       }
 
-      // 生产环境：真实登出
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Logout error:', error);
@@ -146,7 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     user,
     loading,
-    login,
+    signInWithOAuth,
     logout
   };
 
