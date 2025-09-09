@@ -46,31 +46,26 @@ export function AdminSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton 
               size="lg" 
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer hover:bg-sidebar-accent/50 transition-colors"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer hover:bg-sidebar-accent/50 transition-colors group-data-[collapsible=icon]:justify-center"
               onClick={onBackToMain}
             >
               {/* 侧边栏收起时显示的F图标 */}
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar text-sidebar-foreground group-data-[collapsible=icon]:flex hidden">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar text-sidebar-foreground group-data-[collapsible=icon]:flex hidden shrink-0">
                 <div className="franxx-logo-container franxx-logo-small">
                   <span className="franxx-logo">F</span>
                 </div>
               </div>
               
-              {/* 侧边栏展开时显示的完整FRANXX Logo */}
-              <div className="group-data-[collapsible=icon]:hidden flex items-center mr-3">
+              {/* 侧边栏展开时显示的完整FRANXX PANEL Logo */}
+              <div className="group-data-[collapsible=icon]:hidden flex items-center flex-1">
                 <div className="franxx-logo-container franxx-logo-medium">
-                  <span className="franxx-logo">
+                  <span className="franxx-logo whitespace-nowrap">
                     FRAN
                     <span className="text-blue-600 franxx-x">X</span>
                     <span className="text-red-600 franxx-x">X</span>
+                    <span className="ml-4">PANEL</span>
                   </span>
                 </div>
-              </div>
-              
-              {/* 文字信息 - 只在展开时显示 */}
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-semibold">管理后台</span>
-                <span className="truncate text-xs text-muted-foreground">v1.0.0 {!user && '(演示模式)'}</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

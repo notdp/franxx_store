@@ -19,6 +19,9 @@ module.exports = {
       colors: {
         border: "var(--border)",
         input: "var(--input)",
+        // Background color used for inputs in light mode
+        // Matches CSS var --input-background defined in app/globals.css
+        'input-background': "var(--input-background)",
         ring: "var(--ring)",
         background: "var(--background)",
         foreground: "var(--foreground)",
