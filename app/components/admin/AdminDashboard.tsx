@@ -1,16 +1,7 @@
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useAuth } from '../../contexts/AuthContext';
 import { SidebarProvider, SidebarInset } from '../ui/sidebar';
-import { DashboardOverview } from './DashboardOverview';
-import { ProductManagement } from './ProductManagement';
-import { OrderManagement } from './OrderManagement';
-import { GmailAccountManagement } from './GmailAccountManagement';
-import { IOSAccountManagement } from './IOSAccountManagement';
-import { VirtualCardManagement } from './VirtualCardManagement';
-import { DataAnalytics } from './DataAnalytics';
-import { SystemSettings } from './SystemSettings';
-import { FranxxManagement } from './FranxxManagement';
-import { AddressManagement } from './AddressManagement';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { AdminPageType } from './constants';
@@ -89,3 +80,56 @@ export function AdminDashboard({ onBackToMain }: AdminDashboardProps = {}) {
     </SidebarProvider>
   );
 }
+
+// 动态加载各子页面，减少首次进入后台的 JS 体积与解析时间
+const Loading = () => <div className="p-6 text-muted-foreground">加载中...</div>;
+
+const DashboardOverview = dynamic(
+  () => import('./DashboardOverview').then(m => ({ default: m.DashboardOverview })),
+  { ssr: false, loading: Loading }
+)
+
+const ProductManagement = dynamic(
+  () => import('./ProductManagement').then(m => ({ default: m.ProductManagement })),
+  { ssr: false, loading: Loading }
+)
+
+const OrderManagement = dynamic(
+  () => import('./OrderManagement').then(m => ({ default: m.OrderManagement })),
+  { ssr: false, loading: Loading }
+)
+
+const GmailAccountManagement = dynamic(
+  () => import('./GmailAccountManagement').then(m => ({ default: m.GmailAccountManagement })),
+  { ssr: false, loading: Loading }
+)
+
+const IOSAccountManagement = dynamic(
+  () => import('./IOSAccountManagement').then(m => ({ default: m.IOSAccountManagement })),
+  { ssr: false, loading: Loading }
+)
+
+const VirtualCardManagement = dynamic(
+  () => import('./VirtualCardManagement').then(m => ({ default: m.VirtualCardManagement })),
+  { ssr: false, loading: Loading }
+)
+
+const DataAnalytics = dynamic(
+  () => import('./DataAnalytics').then(m => ({ default: m.DataAnalytics })),
+  { ssr: false, loading: Loading }
+)
+
+const SystemSettings = dynamic(
+  () => import('./SystemSettings').then(m => ({ default: m.SystemSettings })),
+  { ssr: false, loading: Loading }
+)
+
+const FranxxManagement = dynamic(
+  () => import('./FranxxManagement').then(m => ({ default: m.FranxxManagement })),
+  { ssr: false, loading: Loading }
+)
+
+const AddressManagement = dynamic(
+  () => import('./AddressManagement').then(m => ({ default: m.AddressManagement })),
+  { ssr: false, loading: Loading }
+)

@@ -33,6 +33,8 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/auth/error`)
     }
 
+    // 不再写入角色 Cookie，授权由服务端与 RLS 决策
+
     return NextResponse.redirect(`${origin}${next}`)
   }
 

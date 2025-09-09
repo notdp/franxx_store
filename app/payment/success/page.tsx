@@ -6,7 +6,6 @@ import { CheckCircle, Loader2, Copy, Mail, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { stripe } from '@/lib/stripe/server';
 
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();

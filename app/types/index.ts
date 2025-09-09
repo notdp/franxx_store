@@ -67,6 +67,8 @@ export interface FAQ {
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
+  // 角色加载状态（独立于会话加载）
+  roleLoading: boolean;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: any }>;
   logout: () => Promise<void>;
 }

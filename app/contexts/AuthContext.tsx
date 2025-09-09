@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { User, AuthContextType, UserRole } from '../types';
@@ -25,9 +25,12 @@ export function useAuth() {
   return context;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({ children, initialUser }: { children: React.ReactNode; initialUser?: User | null }) {
+  const [user, setUser] = useState<User | null>(initialUser ?? null);
+  // loading 表示会话加载中（是否已登录）
+  const [loading, setLoading] = useState<boolean>(initialUser ? false : true);
+  // roleLoading 表示角色信息加载中（用于权限判断）
+  const [roleLoading, setRoleLoading] = useState<boolean>(initialUser ? false : true);
 
   // 获取用户角色的辅助函数
   const getUserRole = async (userId: string): Promise<UserRole> => {
@@ -57,67 +60,177 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (USE_MOCK_USER) {
       setUser(MOCK_USER);
       setLoading(false);
+      setRoleLoading(false);
       return;
     }
 
-    // 生产环境：使用真实的Supabase认证
-    const getSession = async () => {
-      setLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
+    // 如果 SSR 注入了用户，则跳过首次 getSession，直接建立订阅，避免首屏抖动
+    if (initialUser) {
+      setUser(initialUser);
+      setLoading(false);
+      setRoleLoading(false);
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
-          // 获取用户角色
-          const role = await getUserRole(session.user.id);
-          
-          const userData: User = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-            avatar: session.user.user_metadata?.avatar_url,
-            provider: (session.user.app_metadata?.provider || 'google') as 'google' | 'github',
-            created_at: session.user.created_at,
-            role
-          };
-          setUser(userData);
+          // 用户状态变化时，重新拉取角色，保证与 RLS 同步
+          try {
+            setRoleLoading(true);
+            const role = await getUserRole(session.user.id);
+            const updated: User = {
+              id: session.user.id,
+              email: session.user.email || '',
+              name:
+                session.user.user_metadata?.full_name ||
+                session.user.user_metadata?.name ||
+                session.user.email?.split('@')[0] ||
+                'User',
+              avatar: session.user.user_metadata?.avatar_url,
+              provider: (session.user.app_metadata?.provider || 'google') as 'google' | 'github',
+              created_at: session.user.created_at,
+              role,
+            };
+            setUser(updated);
+          } catch (e) {
+            console.error('Error fetching role (onAuthStateChange, SSR bootstrap):', e);
+          } finally {
+            setRoleLoading(false);
+          }
         } else {
           setUser(null);
+          setLoading(false);
+          setRoleLoading(false);
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+
+    // 生产环境：使用真实的Supabase认证（无 SSR 注入时）
+    let didCancel = false;
+    // 会话查询兜底，防止一直 pending
+    const sessionSafetyTimer = setTimeout(() => {
+      if (!didCancel) {
+        console.warn('[Auth] Session check timeout, falling back to anonymous user');
+        setLoading(false);
+      }
+    }, 5000);
+
+    // 角色查询兜底（直接降级为普通用户，避免无限等待）
+    let roleSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const fillUserFromSession = (sessionUser: any, role: UserRole = 'user') => {
+      const userData: User = {
+        id: sessionUser.id,
+        email: sessionUser.email || '',
+        name:
+          sessionUser.user_metadata?.full_name ||
+          sessionUser.user_metadata?.name ||
+          sessionUser.email?.split('@')[0] ||
+          'User',
+        avatar: sessionUser.user_metadata?.avatar_url,
+        provider: (sessionUser.app_metadata?.provider || 'google') as 'google' | 'github',
+        created_at: sessionUser.created_at,
+        role,
+      };
+      setUser(userData);
+    };
+
+    const getSession = async () => {
+      setLoading(true);
+      setRoleLoading(true);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (didCancel) return;
+
+        if (session?.user) {
+          // 先用默认角色填充，尽快结束会话 loading
+          fillUserFromSession(session.user, 'user');
+          setLoading(false);
+
+          // 开始加载角色，加入兜底
+          roleSafetyTimer = setTimeout(() => {
+            if (!didCancel) {
+              console.warn('[Auth] Role fetch timeout, fallback to user role');
+              setRoleLoading(false);
+            }
+          }, 3000);
+
+          try {
+            const role = await getUserRole(session.user.id);
+            if (didCancel) return;
+            fillUserFromSession(session.user, role);
+          } catch (e) {
+            console.error('Error fetching role:', e);
+          } finally {
+            if (!didCancel) setRoleLoading(false);
+            if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
+          }
+        } else {
+          setUser(null);
+          setLoading(false);
+          setRoleLoading(false);
         }
       } catch (error) {
         console.error('Error getting session:', error);
         setUser(null);
-      } finally {
         setLoading(false);
+        setRoleLoading(false);
+      } finally {
+        clearTimeout(sessionSafetyTimer);
       }
     };
 
     getSession();
 
     // 监听认证状态变化
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      
-      if (session?.user) {
-        // 获取用户角色
-        const role = await getUserRole(session.user.id);
-        
-        const userData: User = {
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-          avatar: session.user.user_metadata?.avatar_url,
-          provider: (session.user.app_metadata?.provider || 'google') as 'google' | 'github',
-          created_at: session.user.created_at,
-          role
-        };
-        setUser(userData);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          // 先设置基础信息
+          fillUserFromSession(session.user, 'user');
+          setLoading(false);
+          setRoleLoading(true);
+        // 加入兜底
+        if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
+        roleSafetyTimer = setTimeout(() => {
+          if (!didCancel) {
+            console.warn('[Auth] Role fetch timeout (onAuthStateChange)');
+            setRoleLoading(false);
+          }
+        }, 3000);
+
+        try {
+          const role = await getUserRole(session.user.id);
+          if (didCancel) return;
+          fillUserFromSession(session.user, role);
+        } catch (e) {
+          console.error('Error fetching role (onAuthStateChange):', e);
+        } finally {
+          if (!didCancel) setRoleLoading(false);
+          if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
+        }
       } else {
         setUser(null);
+        setLoading(false);
+        setRoleLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      didCancel = true;
+      clearTimeout(sessionSafetyTimer);
+      if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
+      subscription.unsubscribe();
+    };
+  }, [initialUser]);
 
   const signInWithOAuth = async (provider: 'google' | 'github') => {
     try {
@@ -171,6 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     user,
     loading,
+    roleLoading,
     signInWithOAuth,
     logout
   };

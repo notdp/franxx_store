@@ -18,11 +18,14 @@ export function RoleGuard({
   fallback,
   redirectTo = '/'
 }: RoleGuardProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, roleLoading } = useAuth();
   const router = useRouter();
 
+  // 如果当前已知角色就有权限，直接渲染，避免等待角色刷新造成的转圈
+  const hasPermissionNow = !!user && allowedRoles.includes(user.role);
+
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && !roleLoading && user) {
       // 检查用户角色是否允许访问
       const hasPermission = allowedRoles.includes(user.role);
       
@@ -34,10 +37,15 @@ export function RoleGuard({
       // 未登录用户重定向到登录页
       router.push('/login');
     }
-  }, [user, loading, allowedRoles, redirectTo, router]);
+  }, [user, loading, roleLoading, allowedRoles, redirectTo, router]);
 
-  // 加载中状态
-  if (loading) {
+  // 如果已有权限，直接放行
+  if (hasPermissionNow) {
+    return <>{children}</>;
+  }
+
+  // 加载中状态（会话或角色）
+  if (loading || (user && roleLoading)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">

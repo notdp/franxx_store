@@ -4,6 +4,9 @@ import './globals.css'
 import './franxx-logo.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Toaster } from '@/components/ui/sonner'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
+import type { User, UserRole } from '@/types'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -32,15 +35,78 @@ export const metadata: Metadata = {
   description: '基于DARLING in the FRANXX世界观的ChatGPT订阅服务',
 }
 
-export default function RootLayout({
+export const dynamic = 'force-dynamic'
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // SSR 解析当前会话与角色，并将其注入到 AuthProvider
+  let initialUser: User | null = null
+
+  try {
+    const cookieStore = cookies()
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll().map(({ name, value }) => ({ name, value }))
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set({ name, value, ...options })
+            })
+          },
+        },
+      }
+    )
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      let role: UserRole = 'user'
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single()
+        if (!error && data?.role) {
+          role = data.role as UserRole
+        }
+      } catch (_) {
+        // ignore, fallback to 'user'
+      }
+
+      initialUser = {
+        id: user.id,
+        email: user.email || '',
+        name:
+          (user.user_metadata as any)?.full_name ||
+          (user.user_metadata as any)?.name ||
+          user.email?.split('@')[0] ||
+          'User',
+        avatar: (user.user_metadata as any)?.avatar_url,
+        provider: ((user.app_metadata as any)?.provider || 'google') as 'google' | 'github',
+        created_at: user.created_at,
+        role,
+      }
+    }
+  } catch (e) {
+    // SSR 注入失败不影响渲染，客户端仍可自恢复
+    console.warn('[layout] SSR auth bootstrap failed:', e)
+  }
+
   return (
     <html lang="zh-CN" className={`${orbitron.variable} ${rajdhani.variable} ${londrinaOutline.variable}`}>
       <body className={inter.className}>
-        <AuthProvider>
+        <AuthProvider initialUser={initialUser}>
           {children}
           <Toaster />
         </AuthProvider>
