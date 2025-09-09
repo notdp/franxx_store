@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
@@ -15,6 +15,7 @@ import {
   Settings,
   Shield,
 } from "lucide-react";
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   currentPage: string;
@@ -27,6 +28,7 @@ export function Header({
 }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout } = useAuth();
+  const router = useRouter();
 
   // 使用角色判断是否为管理员
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
@@ -46,6 +48,17 @@ export function Header({
   if (isAdmin) {
     navigation.push({ name: "后台", page: "admin" });
   }
+
+  // 预取常用受保护页面，减少点击等待时间
+  useEffect(() => {
+    // 个人中心/订单页
+    router.prefetch('/orders');
+    router.prefetch('/profile');
+    // 管理后台（仅管理员预取）
+    if (isAdmin) {
+      router.prefetch('/admin');
+    }
+  }, [router, isAdmin]);
 
   const NavItems = () => (
     <>
@@ -113,7 +126,7 @@ export function Header({
             <div className="flex flex-col space-y-6 mt-6">
               {user && (
                 <div className="flex items-center space-x-3 pb-6 border-b">
-                  <Avatar className="h-10 w-10">
+                  <Avatar className="h-9 w-9">
                     <AvatarImage
                       src={user.avatar}
                       alt={user.name}

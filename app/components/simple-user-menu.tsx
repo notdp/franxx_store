@@ -48,9 +48,9 @@ export function SimpleUserMenu({ onNavigate }: SimpleUserMenuProps) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative h-10 w-10 rounded-full hover:opacity-80 transition-opacity"
+        className="relative h-9 w-9 rounded-full hover:opacity-80 transition-opacity"
       >
-        <Avatar className="h-10 w-10">
+        <Avatar className="h-9 w-9">
           <AvatarImage src={user.avatar} alt={user.name} />
           <AvatarFallback>
             {user.name?.[0]?.toUpperCase() || "U"}
