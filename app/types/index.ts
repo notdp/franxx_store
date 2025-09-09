@@ -32,6 +32,7 @@ export interface User {
   provider: 'google' | 'github';
   created_at: string;
   role: UserRole;
+  stripe_customer_id?: string;
 }
 
 export interface Order {
@@ -40,8 +41,8 @@ export interface Order {
   packageName: string;
   phone: string;
   email: string;
-  status: 'pending' | 'paid' | 'delivered' | 'failed';
-  paymentMethod: 'alipay' | 'wechat';
+  status: 'pending' | 'processing' | 'delivered' | 'failed' | 'canceled' | 'expired';
+  paymentMethod: string; // Now supports various Stripe payment methods
   amount: number;
   createdAt: string;
   userId?: string;
@@ -49,6 +50,11 @@ export interface Order {
     email: string;
     password: string;
   };
+  // Stripe-related fields
+  stripe_session_id?: string;
+  stripe_payment_intent_id?: string;
+  stripe_customer_id?: string;
+  payment_status?: 'pending' | 'succeeded' | 'failed' | 'canceled';
 }
 
 export interface FAQ {
@@ -63,4 +69,29 @@ export interface AuthContextType {
   loading: boolean;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: any }>;
   logout: () => Promise<void>;
+}
+
+// Stripe-related types
+export interface PaymentLog {
+  id: string;
+  stripe_event_id: string;
+  event_type: string;
+  payload: any;
+  created_at: string;
+  processed_at?: string;
+}
+
+export interface StripeSessionData {
+  id: string;
+  amount_total: number;
+  currency: string;
+  customer_email: string | null;
+  payment_status: string;
+  payment_method_types: string[];
+  metadata?: Record<string, string>;
+  customer_details?: {
+    email?: string;
+    phone?: string;
+    name?: string;
+  };
 }

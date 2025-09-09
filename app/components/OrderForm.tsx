@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient } from '../lib/api';
 import { Package } from '../types';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Label } from './ui/label';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { ArrowLeft, CreditCard, Smartphone, User, Shield, LogIn, CheckCircle, Clock, Mail, FileText, HelpCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, User, Shield, LogIn, CheckCircle, Clock, Mail, FileText, HelpCircle, Sparkles, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface OrderFormProps {
   package: Package;
@@ -15,25 +13,18 @@ interface OrderFormProps {
   onLogin: () => void;
 }
 
-interface FormData {
-  paymentMethod: string;
-}
-
 interface FormErrors {
   submit?: string;
 }
 
 export function OrderForm({ package: pkg, onBack, onSubmit, onLogin }: OrderFormProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
-    paymentMethod: 'alipay'
-  });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  // 使用 Stripe Checkout 处理支付
+  const handleStripePayment = async () => {
     if (!user) {
       // 未登录用户跳转到登录页面
       onLogin();
@@ -44,42 +35,45 @@ export function OrderForm({ package: pkg, onBack, onSubmit, onLogin }: OrderForm
     setErrors({});
 
     try {
-      // 已登录用户：使用用户邮箱进行订单创建
-      const orderData = {
-        packageId: pkg.id,
-        packageName: pkg.name,
-        phone: user.email, // 使用邮箱作为联系方式
-        email: user.email,
-        paymentMethod: formData.paymentMethod,
-        amount: pkg.salePrice
-      };
-
-      const response = await apiClient.post('/orders', orderData, {
-        requireAuth: true
+      // 调用 Stripe Checkout Session API
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          packageId: pkg.id,
+          packageName: pkg.name,
+          packageDescription: pkg.description,
+          salePrice: pkg.salePrice,
+        }),
       });
 
-      if (response.orderId) {
-        // 模拟支付处理
-        const paymentResponse = await apiClient.post(`/orders/${response.orderId}/pay`, {}, {
-          requireAuth: true
-        });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || '创建支付会话失败');
+      }
 
-        if (paymentResponse.order) {
-          onSubmit({
-            ...orderData,
-            orderId: response.orderId,
-            order: paymentResponse.order
-          });
-        }
+      const { url } = await response.json();
+      
+      // 跳转到 Stripe Checkout 页面
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error('未能获取支付链接');
       }
     } catch (error: any) {
-      console.error('Order submission error:', error);
+      console.error('Stripe payment error:', error);
       setErrors({
-        submit: error.message || '订单提交失败，请重试'
+        submit: error.message || '支付初始化失败，请重试'
       });
-    } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleStripePayment();
   };
 
   return (
@@ -201,31 +195,14 @@ export function OrderForm({ package: pkg, onBack, onSubmit, onLogin }: OrderForm
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <Label>支付方式 *</Label>
-                      <RadioGroup
-                        value={formData.paymentMethod}
-                        onValueChange={(value) => setFormData({...formData, paymentMethod: value})}
-                      >
-                        <div className="flex items-center space-x-2 border rounded-lg p-3">
-                          <RadioGroupItem value="alipay" id="alipay" />
-                          <Label htmlFor="alipay" className="flex items-center space-x-2 cursor-pointer flex-1">
-                            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
-                              <CreditCard className="w-4 h-4 text-white" />
-                            </div>
-                            <span>支付宝</span>
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2 border rounded-lg p-3">
-                          <RadioGroupItem value="wechat" id="wechat" />
-                          <Label htmlFor="wechat" className="flex items-center space-x-2 cursor-pointer flex-1">
-                            <div className="w-6 h-6 bg-green-600 rounded flex items-center justify-center">
-                              <Smartphone className="w-4 h-4 text-white" />
-                            </div>
-                            <span>微信支付</span>
-                          </Label>
-                        </div>
-                      </RadioGroup>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-yellow-800 mb-2">支付方式</h4>
+                      <p className="text-sm text-yellow-700">
+                        点击支付后，您将被重定向到 Stripe 安全支付页面
+                      </p>
+                      <p className="text-sm text-yellow-600 mt-2">
+                        支持：银行卡、Apple Pay、Google Pay、支付宝、加密货币等
+                      </p>
                     </div>
 
                   </>
@@ -266,7 +243,16 @@ export function OrderForm({ package: pkg, onBack, onSubmit, onLogin }: OrderForm
                 )}
 
                 <Button type="submit" className="w-full" size="lg" disabled={loading}>
-                  {loading ? '处理中...' : user ? `确认支付 ¥${pkg.salePrice}` : '登录支付'}
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      正在跳转到支付页面...
+                    </>
+                  ) : user ? (
+                    `确认支付 ¥${pkg.salePrice}`
+                  ) : (
+                    '登录支付'
+                  )}
                 </Button>
 
                 {user && (

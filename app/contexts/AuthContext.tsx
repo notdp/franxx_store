@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { User, AuthContextType, UserRole } from '../types';
 import { supabase } from '../lib/supabase/client';
 
@@ -55,7 +55,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const USE_MOCK_USER = process.env.NEXT_PUBLIC_USE_MOCK_USER === 'true';
     
     if (USE_MOCK_USER) {
-      console.log('🚀 Mock mode: Using mock user for debugging');
       setUser(MOCK_USER);
       setLoading(false);
       return;
@@ -66,7 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('Current session:', session);
         
         if (session?.user) {
           // 获取用户角色
@@ -81,10 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             created_at: session.user.created_at,
             role
           };
-          console.log('Setting user with role:', userData);
           setUser(userData);
         } else {
-          console.log('No session found');
           setUser(null);
         }
       } catch (error) {
@@ -99,7 +95,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session);
       
       if (session?.user) {
         // 获取用户角色
@@ -114,10 +109,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           created_at: session.user.created_at,
           role
         };
-        console.log('Auth state change - Setting user with role:', userData);
         setUser(userData);
       } else {
-        console.log('Auth state change - No user');
         setUser(null);
       }
       setLoading(false);
@@ -131,7 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const USE_MOCK_USER = process.env.NEXT_PUBLIC_USE_MOCK_USER === 'true';
       
       if (USE_MOCK_USER) {
-        console.log(`🚀 Mock login with ${provider}`);
         setUser(MOCK_USER);
         return { error: null };
       }
@@ -148,7 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error };
       }
       
-      console.log('OAuth initiated:', data);
       return { error: null };
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -161,7 +152,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const USE_MOCK_USER = process.env.NEXT_PUBLIC_USE_MOCK_USER === 'true';
       
       if (USE_MOCK_USER) {
-        console.log('🚀 Mock logout');
         setUser(null);
         return;
       }

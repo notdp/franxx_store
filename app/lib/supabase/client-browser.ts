@@ -1,8 +1,6 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from './client';
 
 export function createSupabaseBrowser() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // 返回统一的单例实例，避免多实例并发导致的不确定行为
+  return supabase;
 }
