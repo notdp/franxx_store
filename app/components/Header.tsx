@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { Button } from "./ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "./ui/avatar";
-import { SimpleUserMenu } from "./simple-user-menu";
+} from "@/components/ui/avatar";
+import { SimpleUserMenu } from "@/components/SimpleUserMenu";
 import {
   Menu,
   User,

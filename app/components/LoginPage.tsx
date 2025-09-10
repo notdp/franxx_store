@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Checkbox } from './ui/checkbox';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, Github, Chrome, Loader2, AlertCircle, Check, Shield, Zap, DollarSign, Users, Star } from 'lucide-react';
 
 interface LoginPageProps {
@@ -125,7 +125,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
                       <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
-                  <p className="text-sm mb-2 text-slate-700">"{testimonial.content}"</p>
+                  <p className="text-sm mb-2 text-slate-700">&ldquo;{testimonial.content}&rdquo;</p>
                   <div className="text-xs text-slate-500">
                     <span className="font-medium">{testimonial.name}</span> - {testimonial.role}
                   </div>
@@ -243,7 +243,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
                   <Checkbox 
                     id="agree-terms"
                     checked={agreeToTerms}
-                    onCheckedChange={setAgreeToTerms}
+                    onCheckedChange={(checked) => setAgreeToTerms(checked === true)}
                     className="mt-0.5"
                   />
                   <label htmlFor="agree-terms" className="cursor-pointer leading-relaxed text-xs text-muted-foreground">

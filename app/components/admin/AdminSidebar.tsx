@@ -11,8 +11,8 @@ import {
   SidebarMenuButton, 
   SidebarMenuItem, 
   SidebarSeparator
-} from '../ui/sidebar';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+} from '@/components/ui/sidebar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
+} from '@/components/ui/dropdown-menu';
 import { Home, LogOut } from 'lucide-react';
 import { menuItems, AdminPageType } from './constants';
 

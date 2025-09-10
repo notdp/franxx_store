@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircle, Loader2, Copy, Mail, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,16 +16,7 @@ export default function PaymentSuccessPage() {
   const [orderData, setOrderData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (sessionId) {
-      fetchSessionDetails();
-    } else {
-      setError('缺少支付会话 ID');
-      setLoading(false);
-    }
-  }, [sessionId]);
-
-  const fetchSessionDetails = async () => {
+  const fetchSessionDetails = useCallback(async () => {
     try {
       // 获取 session 详情
       const response = await fetch(`/api/stripe/session/${sessionId}`);
@@ -43,7 +34,16 @@ export default function PaymentSuccessPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (sessionId) {
+      fetchSessionDetails();
+    } else {
+      setError('缺少支付会话 ID');
+      setLoading(false);
+    }
+  }, [sessionId, fetchSessionDetails]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Package } from '../types';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import { Package } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, User, Shield, LogIn, CheckCircle, Clock, Mail, FileText, HelpCircle, Sparkles, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 

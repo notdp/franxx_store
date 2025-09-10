@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { faqs } from '../data/mockData';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
+import { faqs } from '@/data/mockData';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Search, HelpCircle, Phone, MessageCircle, Mail } from 'lucide-react';
 
 export function FAQ() {

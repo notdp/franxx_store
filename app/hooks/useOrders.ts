@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Order } from '../types';
-import { projectId, publicAnonKey } from '../lib/supabase/info';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Order } from '@/types';
 
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-ac949d64`;
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 export function useOrders() {
   const { user } = useAuth();
@@ -13,14 +12,14 @@ export function useOrders() {
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('supabase.auth.token');
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${publicAnonKey}`,
-      ...(token && { 'Authorization': `Bearer ${token}` })
+      'Authorization': `Bearer ${token || anon}`,
     };
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -43,7 +42,7 @@ export function useOrders() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const createOrder = async (orderData: any) => {
     try {
@@ -104,7 +103,7 @@ export function useOrders() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}`
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''}`
         },
         body: JSON.stringify({ orderId, phone })
       });
@@ -128,7 +127,7 @@ export function useOrders() {
     } else {
       setOrders([]);
     }
-  }, [user]);
+  }, [user, fetchOrders]);
 
   return {
     orders,

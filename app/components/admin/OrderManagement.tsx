@@ -1,9 +1,9 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Input } from '../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ShoppingCart, Search, Filter, Download, Eye, Package } from 'lucide-react';
 
 export function OrderManagement() {
@@ -26,7 +26,7 @@ export function OrderManagement() {
       userEmail: 'user2@example.com',
       packageName: 'ChatGPT Pro',
       amount: 158,
-      status: 'paid',
+      status: 'processing',
       paymentMethod: 'wechat',
       createdAt: '2024-01-20 14:25',
       deliveredAt: null
@@ -37,7 +37,7 @@ export function OrderManagement() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'delivered': return 'bg-green-100 text-green-800';
-      case 'paid': return 'bg-blue-100 text-blue-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'failed': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -47,7 +47,7 @@ export function OrderManagement() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'delivered': return '已发货';
-      case 'paid': return '已支付';
+      case 'processing': return '处理中';
       case 'pending': return '待支付';
       case 'failed': return '支付失败';
       default: return status;
@@ -139,7 +139,7 @@ export function OrderManagement() {
               <SelectContent>
                 <SelectItem value="all">全部状态</SelectItem>
                 <SelectItem value="pending">待支付</SelectItem>
-                <SelectItem value="paid">已支付</SelectItem>
+                <SelectItem value="processing">处理中</SelectItem>
                 <SelectItem value="delivered">已发货</SelectItem>
                 <SelectItem value="failed">失败</SelectItem>
               </SelectContent>
@@ -205,7 +205,7 @@ export function OrderManagement() {
                       <Button variant="ghost" size="icon">
                         <Eye className="w-4 h-4" />
                       </Button>
-                      {order.status === 'paid' && (
+                      {order.status === 'processing' && (
                         <Button variant="ghost" size="icon">
                           <Package className="w-4 h-4" />
                         </Button>

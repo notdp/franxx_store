@@ -1,8 +1,8 @@
-import { Package } from '../types';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
+import { Package } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Check, Zap, Shield, Crown, Activity, MapPin, Fuel, Package2 } from 'lucide-react';
 
 interface PackageCardProps {

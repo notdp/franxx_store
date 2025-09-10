@@ -1,7 +1,7 @@
-import { Order } from '../types';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
+import { Order } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Copy, Mail, MessageSquare, Eye, EyeOff, Globe, Lock, Users, Calendar } from 'lucide-react';
 import { useState } from 'react';
 

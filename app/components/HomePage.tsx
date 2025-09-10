@@ -1,5 +1,5 @@
-import { packages } from '../data/mockData';
-import { PackageCard } from './PackageCard';
+import { packages } from '@/data/mockData';
+import { PackageCard } from '@/components/PackageCard';
 import { DollarSign, Zap, Shield, Users, Crown, Heart, MapPin, Activity } from 'lucide-react';
 
 interface HomePageProps {

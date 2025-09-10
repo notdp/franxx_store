@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { apiClient } from '../lib/api';
-import { Order } from '../types';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/api';
+import { Order } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Package, CreditCard, Eye, EyeOff, Copy, User, History, RefreshCw, LogIn } from 'lucide-react';
 
 interface OrderQueryProps {
@@ -18,14 +18,7 @@ export function OrderQuery({ onLogin }: OrderQueryProps) {
   const [showPassword, setShowPassword] = useState<{[key: string]: boolean}>({});
   const [refreshing, setRefreshing] = useState(false);
 
-  // 获取用户订单历史
-  useEffect(() => {
-    if (user) {
-      loadUserOrders();
-    }
-  }, [user]);
-
-  const loadUserOrders = async () => {
+  const loadUserOrders = useCallback(async () => {
     if (!user) return;
     
     setRefreshing(true);
@@ -37,12 +30,19 @@ export function OrderQuery({ onLogin }: OrderQueryProps) {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [user]);
+
+  // 获取用户订单历史
+  useEffect(() => {
+    if (user) {
+      loadUserOrders();
+    }
+  }, [user, loadUserOrders]);
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'paid': return 'bg-blue-100 text-blue-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
       case 'delivered': return 'bg-green-100 text-green-800';
       case 'failed': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -52,7 +52,7 @@ export function OrderQuery({ onLogin }: OrderQueryProps) {
   const getStatusText = (status: Order['status']) => {
     switch (status) {
       case 'pending': return '待支付';
-      case 'paid': return '已支付';
+      case 'processing': return '处理中';
       case 'delivered': return '已发货';
       case 'failed': return '支付失败';
       default: return '未知状态';

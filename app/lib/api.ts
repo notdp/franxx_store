@@ -1,8 +1,8 @@
-import { supabase } from './supabase/client';
-import { projectId, publicAnonKey } from './supabase/info';
-import { Order } from '../types';
+import { supabase } from '@/lib/supabase/client';
+import { Order } from '@/types';
 
-const API_BASE_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ac949d64`;
+// Read API base from env to avoid hardcoding project info
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 interface RequestOptions {
   requireAuth?: boolean;
@@ -24,7 +24,8 @@ class ApiClient {
           throw new Error('Authentication required');
         }
       } else {
-        headers['Authorization'] = `Bearer ${publicAnonKey}`;
+        const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+        headers['Authorization'] = `Bearer ${anon}`;
       }
 
       return headers;

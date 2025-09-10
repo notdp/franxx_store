@@ -1,4 +1,4 @@
-import { Package, FAQ } from '../types';
+import { Package, FAQ } from '@/types';
 
 export const packages: Package[] = [
   {

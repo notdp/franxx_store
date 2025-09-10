@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { supabase } from '@/lib/supabase/client';
 import { Package, Order, User } from '@/types';
 
 // User operations

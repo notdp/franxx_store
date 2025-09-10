@@ -1,8 +1,8 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Progress } from '../ui/progress';
-import { Separator } from '../ui/separator';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -49,7 +49,7 @@ export function DashboardOverview() {
 
   const recentOrders = [
     { id: 'ORDER789012', package: 'ChatGPT Plus', amount: 98, status: 'delivered', time: '2分钟前' },
-    { id: 'ORDER789011', package: 'ChatGPT Pro', amount: 158, status: 'paid', time: '5分钟前' },
+    { id: 'ORDER789011', package: 'ChatGPT Pro', amount: 158, status: 'processing', time: '5分钟前' },
     { id: 'ORDER789010', package: 'ChatGPT Team', amount: 298, status: 'delivered', time: '8分钟前' },
     { id: 'ORDER789009', package: 'ChatGPT Plus', amount: 98, status: 'pending', time: '12分钟前' },
     { id: 'ORDER789008', package: 'ChatGPT Pro', amount: 158, status: 'delivered', time: '15分钟前' }
@@ -64,7 +64,7 @@ export function DashboardOverview() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'delivered': return 'bg-green-100 text-green-800';
-      case 'paid': return 'bg-blue-100 text-blue-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -73,7 +73,7 @@ export function DashboardOverview() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'delivered': return '已发货';
-      case 'paid': return '已支付';
+      case 'processing': return '处理中';
       case 'pending': return '待支付';
       default: return status;
     }
