@@ -1,33 +1,46 @@
 # Supabase 数据库设置指南
 
-## 执行数据库迁移
+## 开发期：单一事实源（SSoT）
 
-### 方法一：使用 Supabase Dashboard（推荐）
+开发阶段不再产出多份迁移，统一维护 `./supabase/schema/` 下的 SQL（按 01–05 顺序）：
 
-1. 登录 [Supabase Dashboard](https://supabase.com/dashboard)
-2. 选择你的项目
-3. 进入 **SQL Editor**
-4. 按顺序执行以下 SQL 文件：
-   - `migrations/001_initial_schema.sql` - 创建基础表结构
-   - `migrations/002_row_level_security.sql` - 设置安全策略
+- `01_extensions.sql`：扩展
+- `02_types.sql`：枚举/类型
+- `models/*.sql`：业务表（users/user_roles/packages/orders/payment_logs/products/virtual_cards/ios_accounts/email_accounts/email_platform_status/payments）
+- `03_functions.sql`：函数与触发器
+- `04_rls.sql`：RLS 策略与基础 GRANT
+- `05_views.sql`：视图
+- `schema.sql` 为入口文件，按如上次序逐个 `\i` 引入。
+- 本地或开发库重建：
 
-### 方法二：使用 Supabase CLI
-
-1. 安装 Supabase CLI：
 ```bash
-npm install -g supabase
+export DB_URL="postgres://user:pass@host:5432/dbname"
+npm run db:apply
+npm run db:seed   # 可选：插入样例套餐
 ```
 
-2. 登录并连接项目：
+新增表（与文档设计一致）：
+
+- `models/products.sql`：商品目录（平台 `openai/anthropic`、服务 `tag` 枚举、定价与库存声明）
+- `models/virtual_cards.sql`：虚拟卡（`pan_encrypted/cvv_encrypted/last4/brand` 等，加密存储，仅管理员可见）
+- `models/ios_accounts.sql`：iOS 账号（绑定虚拟卡，`slot_combo` 合并占用位）
+- `models/email_accounts.sql`：邮箱账号（可分配/保留/回收）
+- `models/email_platform_status.sql`：邮箱在各平台状态（`openai/anthropic`）
+- `models/payments.sql`：Stripe 支付流水（Checkout/PI/Charge/Refund 各 ID + 幂等 `stripe_event_id`）
+
+生成 TypeScript 数据库类型：
+
 ```bash
-supabase login
-supabase link --project-ref ouluzigygowgmeetahln
+npm run db:types
 ```
 
-3. 执行迁移：
+当模型稳定、准备上生产时，再用 Supabase CLI 生成一次基线迁移：
+
 ```bash
-supabase db push
+supabase db diff -f baseline_init
 ```
+
+后续再进入迁移化流程。
 
 ## 配置 OAuth 认证
 
@@ -66,17 +79,30 @@ npm run dev
 
 ## 数据库结构
 
-### 表结构
+### 表结构（public schema）
 
-- **users** - 用户资料（扩展 auth.users）
-- **packages** - 订阅套餐
-- **orders** - 订单记录
+- `users`：用户资料（扩展 `auth.users`），含 `stripe_customer_id`
+- `user_roles`：用户角色（`app_role` 枚举：user/admin/super_admin）
+- `packages`：订阅套餐（支持软删 `deleted_at`）
+- `products`：商品目录（`platform/tag` 枚举、定价、库存声明）
+- `orders`：订单（新增 `final_amount/discount_type/discount_snapshot/currency/payment_status` 等，同时保留旧字段兼容 UI）
+- `payments`：Stripe 流水（`cs_/pi_/ch_/re_/cus_/evt_` 字段与状态）
+- `virtual_cards`：虚拟卡（敏感信息加密存储）
+- `ios_accounts`：iOS 账号（`slot_combo` 聚合占位）
+- `email_accounts`：邮箱账号
+- `email_platform_status`：邮箱在 OpenAI/Anthropic 的平台状态
+- `payment_logs`：Stripe Webhook 事件原始日志（仅 service role 访问）
 
 ### RLS 策略
 
-- 用户只能查看和修改自己的数据
-- 套餐信息对所有人公开
-- 管理员可以查看所有数据
+- `users`：本人可读写；管理员可读全量
+- `user_roles`：本人可读；仅 `super_admin` 可写
+- `packages`：所有人可读；仅管理员可写
+- `products`：所有人可读（在售）；仅管理员可写
+- `orders`：本人（按 `user_id` 或邮箱）可读/写部分状态；管理员可读写
+- `payments`：本人可读（通过 `orders` 关联）；仅管理员可写
+- `virtual_cards` / `ios_accounts` / `email_accounts` / `email_platform_status`：仅管理员可管理
+- `payment_logs`：不创建策略（仅 service role 可越过 RLS）
 
 ## 故障排除
 

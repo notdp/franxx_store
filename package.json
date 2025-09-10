@@ -31,7 +31,6 @@
             "@radix-ui/react-tooltip": "^1.1.8",
             "@stripe/stripe-js": "^7.9.0",
             "@supabase/ssr": "^0.7.0",
-            "@supabase/supabase-js": "*",
             "class-variance-authority": "^0.7.1",
             "clsx": "*",
             "cmdk": "^1.1.1",
@@ -53,6 +52,7 @@
             "vaul": "^1.1.2"
       },
       "devDependencies": {
+            "@supabase/supabase-js": "^2.57.4",
             "@types/node": "^20.10.0",
             "@types/react": "^18.2.0",
             "@types/react-dom": "^18.2.0",
@@ -68,6 +68,15 @@
             "dev": "next dev",
             "build": "next build",
             "start": "next start",
-            "lint": "next lint"
+            "lint": "next lint",
+            "db:apply": "make db-apply",
+            "db:test": "make db-test",
+            "db:console": "make db-console",
+            "db:seed": "make db-seed",
+            "db:backup": "make db-backup",
+            "db:reset": "make db-reset",
+            "db:tables": "make db-tables",
+            "db:count": "make db-count",
+            "db:types": "make db-types"
       }
 }
