@@ -133,3 +133,5 @@ grant select on public.user_roles to authenticated;
 grant select on public.products to anon;
 grant select, insert, update, delete on public.products to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
+-- Views
+grant select on public.virtual_cards_admin to authenticated;

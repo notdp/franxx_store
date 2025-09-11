@@ -36,9 +36,7 @@ do $$ begin
   create type public.payment_status as enum ('pending','authorized','succeeded','failed','canceled','disputed','refunded','partially_refunded');
 exception when duplicate_object then null; end $$;
 
-do $$ begin
-  create type public.card_brand as enum ('visa','mastercard','amex','discover','jcb','diners','unionpay','unknown');
-exception when duplicate_object then null; end $$;
+-- card_brand removed from design (keep no-op here; cleanup happens post-models)
 
 do $$ begin
   create type public.ios_account_status as enum ('active','locked','risk_control','suspended');

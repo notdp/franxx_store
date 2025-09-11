@@ -72,17 +72,11 @@ export default async function RootLayout({
     if (user) {
       let role: UserRole = 'user'
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single()
-        if (!error && data?.role) {
-          role = data.role as UserRole
+        const { data: roleValue } = await supabase.rpc('get_app_role', { check_user_id: user.id })
+        if (roleValue === 'user' || roleValue === 'admin' || roleValue === 'super_admin') {
+          role = roleValue
         }
-      } catch (_) {
-        // ignore, fallback to 'user'
-      }
+      } catch (_) { /* ignore */ }
 
       initialUser = {
         id: user.id,

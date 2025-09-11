@@ -30,21 +30,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect(`/login?next=/admin`)
   }
 
-  // 查询角色并校验
+  // 查询角色（统一走单次 RPC）
   let role: 'user' | 'admin' | 'super_admin' = 'user'
   try {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!error && data?.role) {
-      role = data.role
+    const { data: roleValue } = await supabase.rpc('get_app_role', { check_user_id: user.id })
+    if (roleValue === 'user' || roleValue === 'admin' || roleValue === 'super_admin') {
+      role = roleValue
     }
-  } catch (_) {
-    // ignore, fallback to 'user'
-  }
+  } catch (_) { /* ignore */ }
 
   const isAdmin = role === 'admin' || role === 'super_admin'
   if (!isAdmin) {
@@ -53,4 +46,3 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return <>{children}</>
 }
-

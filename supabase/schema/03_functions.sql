@@ -115,3 +115,104 @@ begin
     where ur.user_id = check_user_id and ur.role in ('admin','super_admin')
   );
 end; $$ language plpgsql security definer;
+
+-- Return app role as a single source of truth
+create or replace function public.get_app_role(check_user_id uuid)
+returns public.app_role
+language plpgsql
+stable
+security definer
+as $$
+declare
+  r public.app_role := 'user';
+begin
+  select ur.role into r from public.user_roles ur where ur.user_id = check_user_id;
+  if r is null then
+    return 'user';
+  end if;
+  return r;
+end; $$;
+
+-- Crypto helpers for sensitive fields (requires pgcrypto and app.crypto_key)
+create or replace function public.encrypt_text(p_text text)
+returns text
+language sql
+stable
+as $$
+  select case when p_text is null then null
+              else encode(pgp_sym_encrypt(p_text, current_setting('app.crypto_key', true)), 'base64') end;
+$$;
+
+create or replace function public.decrypt_text(p_cipher text)
+returns text
+language plpgsql
+stable
+as $$
+declare
+  v_plain text;
+begin
+  if p_cipher is null then
+    return null;
+  end if;
+  begin
+    v_plain := convert_from(pgp_sym_decrypt(decode(p_cipher, 'base64'), current_setting('app.crypto_key', true)), 'utf8');
+    return v_plain;
+  exception when others then
+    -- not decryptable (not ours), return null to avoid leaking
+    return null;
+  end;
+end; $$;
+
+create or replace function public.is_encrypted_text(p_text text)
+returns boolean
+language plpgsql
+stable
+as $$
+declare
+  dummy text;
+begin
+  if p_text is null then return false; end if;
+  begin
+    dummy := public.decrypt_text(p_text);
+    return dummy is not null;
+  exception when others then
+    return false;
+  end;
+end; $$;
+
+-- Auto-encrypt PAN/CVV on insert/update
+create or replace function public.encrypt_virtual_card_fields()
+returns trigger as $$
+begin
+  if new.pan_encrypted is not null and not public.is_encrypted_text(new.pan_encrypted) then
+    new.pan_encrypted := public.encrypt_text(new.pan_encrypted);
+  end if;
+  if new.cvv_encrypted is not null and not public.is_encrypted_text(new.cvv_encrypted) then
+    new.cvv_encrypted := public.encrypt_text(new.cvv_encrypted);
+  end if;
+  return new;
+end; $$ language plpgsql;
+
+drop trigger if exists trg_virtual_cards_encrypt on public.virtual_cards;
+create trigger trg_virtual_cards_encrypt
+before insert or update on public.virtual_cards
+for each row execute function public.encrypt_virtual_card_fields();
+
+-- Admin RPC: list virtual cards with decrypted fields
+create or replace function public.admin_list_virtual_cards()
+returns setof public.virtual_cards_admin
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select * from public.virtual_cards_admin
+  where public.is_admin(auth.uid());
+$$;
+
+-- Cleanup removed enum type after models have been applied
+do $$ begin
+  if exists (select 1 from pg_type where typnamespace = 'public'::regnamespace and typname = 'card_brand') then
+    execute 'drop type public.card_brand';
+  end if;
+end $$;

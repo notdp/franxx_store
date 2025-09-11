@@ -20,3 +20,23 @@ select
   p.created_at
 from public.products p
 where p.status = 'on_sale';
+
+-- Admin-only convenience view with decrypted PAN/CVV (relies on table RLS)
+create or replace view public.virtual_cards_admin as
+select
+  vc.id,
+  public.decrypt_text(vc.pan_encrypted) as pan_plain,
+  vc.last4,
+  vc.expiry_date as expiry,
+  public.decrypt_text(vc.cvv_encrypted) as cvv_plain,
+  vc.provider,
+  vc.holder_name,
+  vc.balance,
+  vc.currency,
+  vc.status,
+  vc.monthly_limit,
+  vc.used_this_month,
+  vc.notes,
+  vc.created_at,
+  vc.updated_at
+from public.virtual_cards vc;
