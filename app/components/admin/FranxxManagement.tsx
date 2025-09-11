@@ -31,7 +31,7 @@ import {
   Link,
   Unlink
 } from 'lucide-react';
-import { packages } from '../../data/mockData';
+import { packages } from '@/data/mockData';
 
 interface Pilot {
   id: string;

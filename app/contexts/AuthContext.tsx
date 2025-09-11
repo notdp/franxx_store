@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { User, AuthContextType, UserRole } from '../types';
-import { supabase } from '../lib/supabase/client';
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { User, AuthContextType, UserRole } from '@/types';
+import { supabase } from '@/lib/supabase/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -25,6 +25,42 @@ export function useAuth() {
   return context;
 }
 
+// 角色缓存 TTL（模块级常量，避免 useEffect 依赖抖动）
+const TTL_MS = 8 * 60 * 60 * 1000; // 8小时
+
+// 本地缓存读写（模块级函数，避免 effect 依赖）
+function readCachedRole(userId: string): UserRole | null {
+  try {
+    const key = `franxx:role:${userId}`
+    const raw = localStorage.getItem(key)
+    if (raw) {
+      const obj = JSON.parse(raw) as { role?: UserRole; exp?: number }
+      if (obj?.role && (obj.exp ?? 0) > Date.now()) {
+        if (obj.role === 'user' || obj.role === 'admin' || obj.role === 'super_admin') return obj.role
+      } else {
+        localStorage.removeItem(key)
+      }
+    }
+    const legacy = localStorage.getItem(`frx_role:${userId}`)
+    if (legacy && (legacy === 'user' || legacy === 'admin' || legacy === 'super_admin')) {
+      writeCachedRole(userId, legacy as UserRole)
+      localStorage.removeItem(`frx_role:${userId}`)
+      return legacy as UserRole
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedRole(userId: string, role: UserRole) {
+  try {
+    const key = `franxx:role:${userId}`
+    const payload = JSON.stringify({ role, exp: Date.now() + TTL_MS })
+    localStorage.setItem(key, payload)
+  } catch {}
+}
+
 export function AuthProvider({ children, initialUser }: { children: React.ReactNode; initialUser?: User | null }) {
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   // loading 表示会话加载中（是否已登录）
@@ -32,49 +68,13 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
   // roleLoading 表示角色信息加载中（用于权限判断）
   const [roleLoading, setRoleLoading] = useState<boolean>(initialUser ? false : true);
 
-  // 读取/写入本地缓存的角色（带 TTL），命名空间 franxx:role:<userId>
-  const TTL_MS = 8 * 60 * 60 * 1000; // 8小时
-
-  const getCachedRole = (userId: string): UserRole | null => {
-    try {
-      const key = `franxx:role:${userId}`
-      const raw = localStorage.getItem(key)
-      if (raw) {
-        const obj = JSON.parse(raw) as { role?: UserRole; exp?: number }
-        if (obj?.role && (obj.exp ?? 0) > Date.now()) {
-          if (obj.role === 'user' || obj.role === 'admin' || obj.role === 'super_admin') return obj.role
-        } else {
-          // 过期则清理
-          localStorage.removeItem(key)
-        }
-      }
-      // 兼容迁移旧键：frx_role:<userId>
-      const legacy = localStorage.getItem(`frx_role:${userId}`)
-      if (legacy && (legacy === 'user' || legacy === 'admin' || legacy === 'super_admin')) {
-        // 迁移到新键并赋予新的 TTL
-        setCachedRole(userId, legacy)
-        localStorage.removeItem(`frx_role:${userId}`)
-        return legacy
-      }
-      return null
-    } catch (_) { return null }
-  }
-
-  const setCachedRole = (userId: string, role: UserRole) => {
-    try {
-      const key = `franxx:role:${userId}`
-      const payload = JSON.stringify({ role, exp: Date.now() + TTL_MS })
-      localStorage.setItem(key, payload)
-    } catch (_) {}
-  }
-
   // 获取用户角色的辅助函数
-  const getUserRole = async (userId: string): Promise<UserRole> => {
+  const getUserRole = useCallback(async (userId: string): Promise<UserRole> => {
     try {
       // 单次 RPC：由后端直接给出角色，稳定且避免多次往返
-      const { data: roleValue, error: rpcErr } = await supabase.rpc('get_app_role', { check_user_id: userId })
+      const { data: roleValue, error: rpcErr } = await (supabase as any).rpc('get_app_role', { check_user_id: userId })
       if (!rpcErr && (roleValue === 'user' || roleValue === 'admin' || roleValue === 'super_admin')) {
-        setCachedRole(userId, roleValue)
+        writeCachedRole(userId, roleValue)
         return roleValue
       }
       // 回退：尝试表读取（不应常用）
@@ -84,7 +84,7 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
         .eq('user_id', userId)
         .maybeSingle();
       if (!error && data?.role) {
-        setCachedRole(userId, data.role)
+        writeCachedRole(userId, data.role)
         return data.role as UserRole
       }
       return 'user'
@@ -92,7 +92,7 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
       console.error('Error in getUserRole:', error);
       return 'user';
     }
-  };
+  }, [])
 
   useEffect(() => {
     // 检查是否使用模拟用户（可通过环境变量控制）
@@ -161,7 +161,7 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
     let roleSafetyTimer: ReturnType<typeof setTimeout> | null = null;
 
     const fillUserFromSession = (sessionUser: any, role: UserRole = 'user') => {
-      const cached = getCachedRole(sessionUser.id)
+      const cached = readCachedRole(sessionUser.id)
       const effectiveRole = role !== 'user' ? role : (cached ?? role)
       const userData: User = {
         id: sessionUser.id,
@@ -193,7 +193,7 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
           // 先用默认角色+缓存填充
           fillUserFromSession(session.user, 'user');
           setLoading(false);
-          const cachedRole = getCachedRole(session.user.id)
+      const cachedRole = readCachedRole(session.user.id)
           if (cachedRole) {
             // 若有缓存，立即结束 roleLoading，避免等待 3s 占位
             setRoleLoading(false)
@@ -211,7 +211,7 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
             const role = await getUserRole(session.user.id);
             if (didCancel) return;
             fillUserFromSession(session.user, role);
-            setCachedRole(session.user.id, role)
+            writeCachedRole(session.user.id, role)
           } catch (e) {
             console.error('Error fetching role:', e);
           } finally {
@@ -243,7 +243,7 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
           // 先设置基础信息 + 缓存
           fillUserFromSession(session.user, 'user');
           setLoading(false);
-          const cachedRole = getCachedRole(session.user.id)
+          const cachedRole = readCachedRole(session.user.id)
           setRoleLoading(!cachedRole)
           // 加入兜底
           if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
@@ -279,7 +279,7 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
       if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
       subscription.unsubscribe();
     };
-  }, [initialUser]);
+  }, [initialUser, getUserRole]);
 
   const signInWithOAuth = async (provider: 'google' | 'github') => {
     try {

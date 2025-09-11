@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Package, CreditCard, Eye, EyeOff, Copy, User, History, RefreshCw, LogIn } from 'lucide-react';
+import { getOrderStatusMeta } from '@/constants/order'
 
 interface OrderQueryProps {
   onLogin?: () => void;
@@ -39,25 +40,8 @@ export function OrderQuery({ onLogin }: OrderQueryProps) {
     }
   }, [user, loadUserOrders]);
 
-  const getStatusColor = (status: Order['status']) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusText = (status: Order['status']) => {
-    switch (status) {
-      case 'pending': return '待支付';
-      case 'processing': return '处理中';
-      case 'delivered': return '已发货';
-      case 'failed': return '支付失败';
-      default: return '未知状态';
-    }
-  };
+  const getStatusColor = (status: Order['status']) => getOrderStatusMeta(status).className;
+  const getStatusText = (status: Order['status']) => getOrderStatusMeta(status).label;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

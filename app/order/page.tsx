@@ -1,7 +1,6 @@
 'use client'
 
 import { OrderForm } from '@/components/OrderForm'
-import { Header } from '@/components/Header'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { packages } from '@/data/mockData'
 import { Order } from '@/types'
@@ -22,14 +21,6 @@ export default function OrderPage() {
 
   const handleBack = () => {
     router.push('/')
-  }
-
-  const handleNavigate = (page: string) => {
-    if (page === 'home') {
-      router.push('/')
-    } else {
-      router.push(`/${page}`)
-    }
   }
 
   const handleLogin = () => {
@@ -66,7 +57,6 @@ export default function OrderPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header currentPage="order" onNavigate={handleNavigate} />
       <OrderForm
         package={selectedPackage}
         onBack={handleBack}

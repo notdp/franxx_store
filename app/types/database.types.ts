@@ -627,6 +627,30 @@ export type Database = {
         Args: { check_user_id: string }
         Returns: boolean
       }
+      get_app_role: {
+        Args: { check_user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      admin_list_virtual_cards: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          pan_plain: string | null
+          last4: string | null
+          expiry: string | null
+          cvv_plain: string | null
+          provider: string | null
+          holder_name: string | null
+          balance: number | null
+          currency: Database["public"]["Enums"]["currency_code"]
+          status: Database["public"]["Enums"]["virtual_card_status"]
+          monthly_limit: number | null
+          used_this_month: number | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       ai_platform: "openai" | "anthropic"

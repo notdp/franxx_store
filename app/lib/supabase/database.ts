@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
-import { Package, Order, User } from '@/types';
+import { Package, Order, User, UserRole } from '@/types';
 
 // User operations
 export const userService = {
@@ -11,7 +11,18 @@ export const userService = {
       .single();
 
     if (error) throw error;
-    return data as User;
+    const raw = data as any
+    const mapped: User = {
+      id: raw.id,
+      email: raw.email,
+      name: raw.name ?? raw.email?.split('@')[0] ?? 'User',
+      avatar: raw.avatar_url ?? undefined,
+      provider: (raw.provider ?? 'google') as 'google' | 'github',
+      created_at: raw.created_at,
+      role: (raw.role ?? 'user') as UserRole,
+      stripe_customer_id: raw.stripe_customer_id ?? undefined,
+    }
+    return mapped;
   },
 
   async updateProfile(userId: string, updates: Partial<User>) {
@@ -23,14 +34,25 @@ export const userService = {
       .single();
 
     if (error) throw error;
-    return data as User;
+    const raw = data as any
+    const mapped: User = {
+      id: raw.id,
+      email: raw.email,
+      name: raw.name ?? raw.email?.split('@')[0] ?? 'User',
+      avatar: raw.avatar_url ?? undefined,
+      provider: (raw.provider ?? 'google') as 'google' | 'github',
+      created_at: raw.created_at,
+      role: (raw.role ?? 'user') as UserRole,
+      stripe_customer_id: raw.stripe_customer_id ?? undefined,
+    }
+    return mapped;
   }
 };
 
 // Package operations
 export const packageService = {
   async getAll() {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('packages')
       .select('*')
       .order('created_at', { ascending: false });
@@ -40,7 +62,7 @@ export const packageService = {
   },
 
   async getById(packageId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('packages')
       .select('*')
       .eq('id', packageId)
@@ -51,7 +73,7 @@ export const packageService = {
   },
 
   async getByTier(tier: 'standard' | 'advanced' | 'legendary') {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('packages')
       .select('*')
       .eq('tier', tier)
@@ -65,7 +87,7 @@ export const packageService = {
 // Order operations
 export const orderService = {
   async create(orderData: Omit<Order, 'id' | 'createdAt'>) {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('orders')
       .insert({
         ...orderData,
@@ -79,7 +101,7 @@ export const orderService = {
   },
 
   async getByUserId(userId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('orders')
       .select('*')
       .eq('user_id', userId)
@@ -90,7 +112,7 @@ export const orderService = {
   },
 
   async getById(orderId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('orders')
       .select('*')
       .eq('id', orderId)
@@ -101,7 +123,7 @@ export const orderService = {
   },
 
   async updateStatus(orderId: string, status: Order['status']) {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('orders')
       .update({ 
         status,
@@ -197,11 +219,20 @@ export const adminService = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data as User[];
+    return (data as any[]).map((raw) => ({
+      id: raw.id,
+      email: raw.email,
+      name: raw.name ?? raw.email?.split('@')[0] ?? 'User',
+      avatar: raw.avatar_url ?? undefined,
+      provider: (raw.provider ?? 'google') as 'google' | 'github',
+      created_at: raw.created_at,
+      role: 'user' as UserRole,
+      stripe_customer_id: raw.stripe_customer_id ?? undefined,
+    }))
   },
 
   async updatePackageStock(packageId: string, stock: number) {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('packages')
       .update({ stock })
       .eq('id', packageId)

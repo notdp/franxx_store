@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import type { User, UserRole } from '@/types'
+import { SiteHeader } from '@/components/layout/SiteHeader'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -101,6 +102,7 @@ export default async function RootLayout({
     <html lang="zh-CN" className={`${orbitron.variable} ${rajdhani.variable} ${londrinaOutline.variable}`}>
       <body className={inter.className}>
         <AuthProvider initialUser={initialUser}>
+          <SiteHeader />
           {children}
           <Toaster />
         </AuthProvider>
