@@ -160,6 +160,41 @@
   }
 }
 
+/* Engine stripes animation for Hero engage bar */
+@keyframes moveStripes {
+  from { background-position: 0 0; }
+  to   { background-position: 24px 0; }
+}
+
+/* quick flash pop for engage completion (used inline) */
+@keyframes flashPop {
+  0% { opacity: 0.9; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.0); }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+/* Seamless marquee for FeaturesSection */
+@keyframes franxx-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.features-marquee {
+  width: max-content;
+  will-change: transform;
+  /* Slow down the continuous scroll a bit (was 28s) */
+  animation: franxx-marquee 36s linear infinite;
+}
+
+/* Pause marquee while dragging for reorder */
+.dragging .features-marquee {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .features-marquee { animation-duration: 0s; }
+}
+
 /* FRANXX 专用样式已移至 franxx-logo.css */
 
 /**
@@ -221,4 +256,3 @@
 html {
   font-size: 14px !important;
 }
-

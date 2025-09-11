@@ -25,10 +25,12 @@ This document captures the agreed-upon conventions and the refactor performed in
   - Casted `supabase` to `any` for RPCs or tables not covered in generated types (e.g., `get_app_role`, `admin_list_virtual_cards`, `packages`).
 - Reduced ESLint noise by stabilizing Auth helpers in `AuthContext`:
   - Moved role cache functions to module scope; wrapped `getUserRole` with `useCallback` and fixed effect deps.
-- Home page componentization and parity with original design:
+- Home page componentization and later simplification:
   - Split: `HeroSection`, `FranxxSelection`, `FeaturesSection`, composed in `HomePage`.
-  - Restored original Hero details (APE indicator, system status chips、配置三卡片、动员横幅与 CTA)。
-  - Ensured the three system-status chips appear above “神经连接配置” (per 7a86cf9).
+  - 2025-09-12: Simplified `HeroSection` for laptop viewability (single‑screen, cleaner copy, background image via `public/images/franxx/*`).
+  - Moved “神经连接配置（单人/双人/小队）” from `HeroSection` into `FeaturesSection` as a second subsection.
+  - Added `#features` anchor for secondary CTA.
+  - Assets relocated from `/assets` to `public/images/franxx/` for Next static serving.
 - Route groups:
   - Admin moved to `app/(admin)/admin/*` with its own layout; site homepage moved to `app/(site)/page.tsx`.
   - Removed legacy `app/components/Header.tsx` in favor of global `SiteHeader`.

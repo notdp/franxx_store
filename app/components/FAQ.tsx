@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { faqs } from '@/data/mockData';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,13 +8,22 @@ import { Search, HelpCircle, Phone, MessageCircle, Mail } from 'lucide-react';
 
 export function FAQ() {
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const filteredFaqs = faqs.filter(faq =>
-    faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    faq.answer.toLowerCase().includes(searchTerm.toLowerCase())
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  const categories = useMemo(
+    () => [...new Set(faqs.map((faq) => faq.category))],
+    [],
   );
 
-  const categories = [...new Set(faqs.map(faq => faq.category))];
+  const filteredFaqs = useMemo(() => {
+    const bySearch = faqs.filter(
+      (faq) =>
+        faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        faq.answer.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+    if (!activeCategory) return bySearch;
+    return bySearch.filter((faq) => faq.category === activeCategory);
+  }, [searchTerm, activeCategory]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -41,11 +50,43 @@ export function FAQ() {
 
         {/* Categories */}
         <div className="flex flex-wrap gap-2 mb-6">
-          {categories.map(category => (
-            <Badge key={category} variant="secondary" className="text-sm py-1 px-3 select-text">
-              {category}
-            </Badge>
-          ))}
+          {/* All / Reset */}
+          <Badge
+            key="全部"
+            variant={activeCategory === null ? 'default' : 'secondary'}
+            className="text-sm py-1 px-3 cursor-pointer select-none"
+            role="button"
+            aria-pressed={activeCategory === null}
+            tabIndex={0}
+            onClick={() => setActiveCategory(null)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') setActiveCategory(null);
+            }}
+            title="显示全部问题"
+          >
+            全部
+          </Badge>
+          {categories.map((category) => {
+            const active = activeCategory === category;
+            return (
+              <Badge
+                key={category}
+                variant={active ? 'default' : 'secondary'}
+                className="text-sm py-1 px-3 cursor-pointer select-none"
+                role="button"
+                aria-pressed={active}
+                tabIndex={0}
+                onClick={() => setActiveCategory(active ? null : category)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ')
+                    setActiveCategory(active ? null : category);
+                }}
+                title={`筛选：${category}`}
+              >
+                {category}
+              </Badge>
+            );
+          })}
         </div>
 
         {/* FAQ List */}
@@ -56,7 +97,13 @@ export function FAQ() {
               <span>常见问题解答</span>
             </CardTitle>
             <CardDescription>
-              找到了 {filteredFaqs.length} 个相关问题
+              {activeCategory ? (
+                <>
+                  已筛选「{activeCategory}」，共 {filteredFaqs.length} 个结果
+                </>
+              ) : (
+                <>找到了 {filteredFaqs.length} 个相关问题</>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
