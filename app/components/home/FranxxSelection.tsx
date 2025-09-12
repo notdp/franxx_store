@@ -11,7 +11,8 @@ interface FranxxSelectionProps {
 
 export function FranxxSelection({ packages, onSelectPackage }: FranxxSelectionProps) {
   return (
-    <section id="franxx-selection" className="scroll-mt-20 min-h-screen flex flex-col justify-center px-4 relative z-10 bg-gradient-to-br from-blue-50 to-purple-50/30">
+    // 彻底依赖 JS 精确滚动，移除所有 scroll-mt 偏移
+    <section id="franxx-selection" className="min-h-screen flex flex-col justify-center px-4 relative z-10 bg-gradient-to-br from-blue-50 to-purple-50/30">
       <div className="container mx-auto py-16">
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">

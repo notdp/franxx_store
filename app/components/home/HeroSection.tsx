@@ -13,7 +13,16 @@ export function HeroSection({ onPrimaryClick }: HeroSectionProps) {
   const src = '/images/franxx/4k/wallpaperflare.com_wallpaper (4).jpg'
   const handleEngage = useCallback(() => {
     if (onPrimaryClick) onPrimaryClick()
-    else document.querySelector('#franxx-selection')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    else {
+      const target = document.querySelector('#franxx-selection') as HTMLElement | null
+      if (!target) return
+      const header = document.querySelector('header') as HTMLElement | null
+      const headerH = header?.getBoundingClientRect().height ?? 0
+      const rect = target.getBoundingClientRect()
+      const absoluteTop = window.scrollY + rect.top
+      const top = Math.max(0, absoluteTop - headerH)
+      window.scrollTo({ top, behavior: 'smooth' })
+    }
   }, [onPrimaryClick])
 
   // Hold-to-engage state

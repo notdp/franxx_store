@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { User, AuthContextType, UserRole } from '@/types';
 import { supabase } from '@/lib/supabase/client';
+import { logout as serverLogout } from '@/actions/auth'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -317,7 +318,8 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
         setUser(null);
         return;
       }
-
+      // 先清服务端 httpOnly 会话，再清客户端本地会话
+      try { await serverLogout() } catch (e) { console.warn('Server logout failed (ignored):', e) }
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Logout error:', error);

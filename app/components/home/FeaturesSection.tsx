@@ -184,7 +184,7 @@ export function FeaturesSection() {
   return (
     <section
       id="features"
-      className="scroll-mt-20 pt-16 pb-24 px-4 bg-gradient-to-br from-blue-50 to-purple-50/30 relative z-10"
+      className="pt-16 pb-24 px-4 bg-gradient-to-br from-blue-50 to-purple-50/30 relative z-10"
     >
       <div className="container mx-auto">
         <div className="text-center mb-12">

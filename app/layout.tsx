@@ -4,9 +4,8 @@ import './globals.css'
 import './franxx-logo.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Toaster } from '@/components/ui/sonner'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
-import type { User, UserRole } from '@/types'
+import type { User } from '@/types'
+import { getUserWithRole } from '@/lib/supabase/rsc'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -47,52 +46,8 @@ export default async function RootLayout({
   let initialUser: User | null = null
 
   try {
-    const cookieStore = cookies()
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll().map(({ name, value }) => ({ name, value }))
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set({ name, value, ...options })
-            })
-          },
-        },
-      }
-    )
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (user) {
-      let role: UserRole = 'user'
-      try {
-        const { data: roleValue } = await supabase.rpc('get_app_role', { check_user_id: user.id })
-        if (roleValue === 'user' || roleValue === 'admin' || roleValue === 'super_admin') {
-          role = roleValue
-        }
-      } catch (_) { /* ignore */ }
-
-      initialUser = {
-        id: user.id,
-        email: user.email || '',
-        name:
-          (user.user_metadata as any)?.full_name ||
-          (user.user_metadata as any)?.name ||
-          user.email?.split('@')[0] ||
-          'User',
-        avatar: (user.user_metadata as any)?.avatar_url,
-        provider: ((user.app_metadata as any)?.provider || 'google') as 'google' | 'github',
-        created_at: user.created_at,
-        role,
-      }
-    }
+    // RSC 内只读获取当前用户与角色（由 Middleware 负责刷新）
+    initialUser = await getUserWithRole()
   } catch (e) {
     // SSR 注入失败不影响渲染，客户端仍可自恢复
     console.warn('[layout] SSR auth bootstrap failed:', e)
