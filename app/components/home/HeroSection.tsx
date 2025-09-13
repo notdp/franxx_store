@@ -166,7 +166,7 @@ export function HeroSection({ onPrimaryClick }: HeroSectionProps) {
       window.removeEventListener('touchstart', onAnyPointer)
     }
   }, [holding, progress])
-  
+
   // 回到该页或回到顶部时重置显示，避免旧进度残留
   useEffect(() => {
     const onVis = () => {
@@ -211,63 +211,69 @@ export function HeroSection({ onPrimaryClick }: HeroSectionProps) {
           <div className="col-span-12 md:col-span-4 pr-4 md:pr-6 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]">
             {/* 状态胶囊 */}
             <div className="mb-6 md:mb-8">
-              <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full ring-1 ring-white/20">
+              <div className="inline-flex items-center gap-3 bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-md px-4 py-2 rounded-full ring-1 ring-white/20 shadow-lg shadow-black/20">
                 <span className="flex items-center gap-2 text-xs md:text-sm">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" /> APE 在线
+                  <span className="relative flex w-2 h-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  </span>
+                  <span className="text-green-300">APE 在线</span>
                 </span>
                 <span className="w-px h-4 bg-white/25" />
                 <span className="flex items-center gap-1.5 text-xs md:text-sm">
-                  <MapPin className="w-3.5 h-3.5" /> Plantation 13
+                  <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="text-cyan-300">Plantation 13</span>
                 </span>
                 <span className="w-px h-4 bg-white/25" />
                 <span className="flex items-center gap-1.5 text-xs md:text-sm">
-                  <Activity className="w-3.5 h-3.5" /> 岩浆核心就绪
+                  <Activity className="w-3.5 h-3.5 text-pink-400 animate-pulse" />
+                  <span className="text-pink-300">岩浆核心就绪</span>
                 </span>
               </div>
             </div>
 
-          {/* 标题 + 与标题同宽的引擎条（方角、较高） */}
-          <div className="inline-block">
-            <h1 className="relative font-bold leading-tight tracking-tight text-4xl sm:text-5xl md:text-6xl 2xl:text-7xl" style={{ transform: `translate3d(${vibX}px, ${vibY}px, 0)` }}>
-              <span className="text-white/60">FRANXX 驾驶计划</span>
-              {/* 渐变填充，根据进度从左到右染色 */}
-              <span
-                aria-hidden
-                className="absolute inset-0 text-transparent bg-gradient-to-r from-red-500 via-pink-400 to-blue-600 bg-clip-text"
-                style={{ backgroundSize: `${Math.max(0, Math.min(100, progress))}% 100%`, backgroundRepeat: 'no-repeat', backgroundPosition: 'left top' }}
-              >
-                FRANXX 驾驶计划
-              </span>
-            </h1>
-            {/* 引擎条放在标题正下方，宽度继承 inline-block 宽度 */}
-            <div className="mt-3 select-none" title="按住 Enter 点火">
-              <div className="relative h-3 md:h-4 w-full overflow-hidden ring-1 ring-white/40 bg-white/5">
-                {/* 轨道刻度（方角） */}
-                <div className="absolute inset-0 opacity-30" style={{backgroundImage:'repeating-linear-gradient(to right, rgba(255,255,255,0.6) 0, rgba(255,255,255,0.6) 1px, transparent 1px, transparent 10px)'}} />
-                {/* 进度填充 */}
-                <div
-                  className={`absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 via-pink-500 to-blue-600 ${holding ? 'shadow-[0_0_24px_rgba(255,0,90,0.35)]' : ''}`}
-                  style={{ width: `${progress}%` }}
-                />
-                {/* 斜纹流动（仅在按住时显示） */}
-                {holding && (
-                  <div className="absolute inset-y-0 left-0 mix-blend-screen" style={{ width: `${progress}%`, backgroundImage:'repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0, rgba(255,255,255,0.35) 6px, rgba(255,255,255,0.12) 6px, rgba(255,255,255,0.12) 12px)', backgroundSize:'24px 24px', animation:'moveStripes 0.6s linear infinite'}} />
-                )}
-                {/* 满格闪光已移除 */}
-              </div>
-              {/* 提示放在条下方 */}
-              <div className="flex items-center gap-2 text-white/85 text-xs md:text-sm mt-1.5">
-                <span>按住</span>
-                <kbd className="px-1.5 py-0.5 border border-white/30 bg-white/10 text-white/95">Enter</kbd>
-                <span>点火 · 松开取消</span>
+            {/* 标题 + 与标题同宽的引擎条（方角、较高） */}
+            <div className="inline-block">
+              <h1 className="relative font-bold leading-tight tracking-tight text-4xl sm:text-5xl md:text-6xl 2xl:text-7xl" style={{ transform: `translate3d(${vibX}px, ${vibY}px, 0)` }}>
+                <span className="text-white/60">FRANXX 驾驶计划</span>
+                {/* 渐变填充，根据进度从左到右染色 */}
+                <span
+                  aria-hidden
+                  className="absolute inset-0 text-transparent bg-gradient-to-r from-red-500 via-pink-400 to-blue-600 bg-clip-text"
+                  style={{ backgroundSize: `${Math.max(0, Math.min(100, progress))}% 100%`, backgroundRepeat: 'no-repeat', backgroundPosition: 'left top' }}
+                >
+                  FRANXX 驾驶计划
+                </span>
+              </h1>
+              {/* 引擎条放在标题正下方，宽度继承 inline-block 宽度 */}
+              <div className="mt-3 select-none" title="按住 Enter 点火">
+                <div className="relative h-3 md:h-4 w-full overflow-hidden ring-1 ring-white/40 bg-white/5">
+                  {/* 轨道刻度（方角） */}
+                  <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'repeating-linear-gradient(to right, rgba(255,255,255,0.6) 0, rgba(255,255,255,0.6) 1px, transparent 1px, transparent 10px)' }} />
+                  {/* 进度填充 */}
+                  <div
+                    className={`absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 via-pink-500 to-blue-600 ${holding ? 'shadow-[0_0_24px_rgba(255,0,90,0.35)]' : ''}`}
+                    style={{ width: `${progress}%` }}
+                  />
+                  {/* 斜纹流动（仅在按住时显示） */}
+                  {holding && (
+                    <div className="absolute inset-y-0 left-0 mix-blend-screen" style={{ width: `${progress}%`, backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0, rgba(255,255,255,0.35) 6px, rgba(255,255,255,0.12) 6px, rgba(255,255,255,0.12) 12px)', backgroundSize: '24px 24px', animation: 'moveStripes 0.6s linear infinite' }} />
+                  )}
+                  {/* 满格闪光已移除 */}
+                </div>
+                {/* 提示放在条下方 */}
+                <div className="flex items-center gap-2 text-white/85 text-xs md:text-sm mt-1.5">
+                  <span>按住</span>
+                  <kbd className="px-1.5 py-0.5 border border-white/30 bg-white/10 text-white/95">Enter</kbd>
+                  <span>点火 · 松开取消</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* 副文案 */}
-          <p className="text-lg sm:text-xl text-white/90 mt-4 mb-0">
-            接入神经连接，即刻入列 13 号战斗序列。
-          </p>
+            {/* 副文案 */}
+            <p className="text-lg sm:text-xl text-white/90 mt-4 mb-0">
+              接入神经连接，即刻入列 13 号战斗序列。
+            </p>
 
             {/* 战斗状态指示移动到左下角覆盖层 */}
           </div>
