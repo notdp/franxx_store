@@ -2,7 +2,7 @@
 drop table if exists public.payments cascade;
 create table public.payments (
   id                        uuid primary key default gen_random_uuid(),
-  order_id                  uuid not null references public.orders(id) on delete cascade,
+  order_id                  uuid not null,
   provider                  text not null default 'stripe',
   kind                      text not null check (kind in ('charge','refund')),
   amount                    numeric(10,2) not null,
@@ -24,4 +24,3 @@ create unique index if not exists uq_payments_event on public.payments(stripe_ev
 create unique index if not exists uq_payments_charge on public.payments(stripe_charge_id) where stripe_charge_id is not null and kind = 'charge';
 create unique index if not exists uq_payments_refund on public.payments(stripe_refund_id) where stripe_refund_id is not null and kind = 'refund';
 create index if not exists idx_payments_order on public.payments(order_id, created_at desc);
-

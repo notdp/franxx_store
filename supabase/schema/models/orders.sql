@@ -2,8 +2,8 @@
 drop table if exists public.orders cascade;
 create table public.orders (
   id                        uuid primary key default gen_random_uuid(),
-  user_id                   uuid references public.users(id) on delete set null,
-  package_id                uuid references public.packages(id) on delete set null,
+  user_id                   uuid,
+  package_id                uuid,
   package_name              text,
   -- New product linkage (optional during transition)
   product_id                uuid,
@@ -41,6 +41,7 @@ create table public.orders (
 );
 
 create index if not exists idx_orders_user_id on public.orders(user_id);
+create index if not exists idx_orders_package_id on public.orders(package_id);
 create index if not exists idx_orders_status on public.orders(status);
 create index if not exists idx_orders_created_at on public.orders(created_at desc);
 create index if not exists idx_orders_email on public.orders(email);

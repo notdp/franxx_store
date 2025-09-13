@@ -1,18 +1,21 @@
--- Enable RLS
-alter table public.users enable row level security;
-alter table public.packages enable row level security;
-alter table public.orders enable row level security;
-alter table public.user_roles enable row level security;
-alter table public.payment_logs enable row level security;
-alter table public.products enable row level security;
-alter table public.virtual_cards enable row level security;
-alter table public.ios_accounts enable row level security;
-alter table public.email_accounts enable row level security;
-alter table public.email_platform_status enable row level security;
-alter table public.payments enable row level security;
+-- Enable RLS (placed last by filename)
+alter table if exists public.users enable row level security;
+alter table if exists public.orders enable row level security;
+alter table if exists public.user_roles enable row level security;
+alter table if exists public.products enable row level security;
+alter table if exists public.virtual_cards enable row level security;
+alter table if exists public.ios_accounts enable row level security;
+alter table if exists public.email_accounts enable row level security;
+alter table if exists public.email_platform_status enable row level security;
+alter table if exists public.payments enable row level security;
 
--- Ensure no permissive legacy policy remains
-drop policy if exists "Service role can manage payment_logs" on public.payment_logs;
+-- Ensure no permissive legacy policy remains (skip non-existent tables)
+do $$ begin
+  if exists (select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+             where n.nspname='public' and c.relname='payment_logs' and c.relkind='r') then
+    execute 'drop policy if exists "Service role can manage payment_logs" on public.payment_logs';
+  end if;
+end $$;
 
 -- Users policies
 drop policy if exists "Users can view own profile" on public.users;
@@ -26,23 +29,6 @@ create policy "Users can update own profile" on public.users
 drop policy if exists "Admins can view all users" on public.users;
 create policy "Admins can view all users" on public.users
   for select using (public.is_admin(auth.uid()));
-
--- Packages policies
-drop policy if exists "Packages are viewable by everyone" on public.packages;
-create policy "Packages are viewable by everyone" on public.packages
-  for select using (true);
-
-drop policy if exists "Only admins can insert packages" on public.packages;
-create policy "Only admins can insert packages" on public.packages
-  for insert with check (public.is_admin(auth.uid()));
-
-drop policy if exists "Only admins can update packages" on public.packages;
-create policy "Only admins can update packages" on public.packages
-  for update using (public.is_admin(auth.uid()));
-
-drop policy if exists "Only admins can delete packages" on public.packages;
-create policy "Only admins can delete packages" on public.packages
-  for delete using (public.is_admin(auth.uid()));
 
 -- Orders policies
 drop policy if exists "Users can view own orders" on public.orders;
@@ -81,8 +67,6 @@ create policy "Super admin can update roles" on public.user_roles
 drop policy if exists "Super admin can insert roles" on public.user_roles;
 create policy "Super admin can insert roles" on public.user_roles
   for insert with check (public.is_super_admin(auth.uid()));
-
--- Payment logs: no policies added (service role bypasses RLS). Leaving without policies prevents any non-service access.
 
 -- Products policies
 drop policy if exists "Products are viewable by everyone" on public.products;
@@ -123,15 +107,12 @@ drop policy if exists "Admins can manage payments" on public.payments;
 create policy "Admins can manage payments" on public.payments
   for all using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
 
--- Grants (basic)
+-- Basic grants
 grant usage on schema public to anon, authenticated;
 grant select, insert, update on public.users to authenticated;
-grant select on public.packages to anon;
-grant select, insert, update, delete on public.packages to authenticated;
 grant select, insert, update on public.orders to authenticated;
 grant select on public.user_roles to authenticated;
 grant select on public.products to anon;
 grant select, insert, update, delete on public.products to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
--- Views
-grant select on public.virtual_cards_admin to authenticated;
+

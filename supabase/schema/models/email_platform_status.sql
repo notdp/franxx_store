@@ -2,7 +2,7 @@
 drop table if exists public.email_platform_status cascade;
 create table public.email_platform_status (
   id                 uuid primary key default gen_random_uuid(),
-  email_account_id   uuid not null references public.email_accounts(id) on delete cascade,
+  email_account_id   uuid not null,
   platform           public.ai_platform not null,
   status             text not null default 'active', -- active/banned/suspended
   banned_at          timestamptz,
@@ -15,4 +15,4 @@ create table public.email_platform_status (
 );
 
 create index if not exists idx_email_platform_status_platform on public.email_platform_status(platform);
-
+create index if not exists idx_email_platform_status_email on public.email_platform_status(email_account_id);

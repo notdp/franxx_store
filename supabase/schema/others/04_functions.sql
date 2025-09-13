@@ -12,11 +12,6 @@ create trigger trg_users_updated_at
 before update on public.users
 for each row execute function public.update_updated_at_column();
 
-drop trigger if exists trg_packages_updated_at on public.packages;
-create trigger trg_packages_updated_at
-before update on public.packages
-for each row execute function public.update_updated_at_column();
-
 drop trigger if exists trg_orders_updated_at on public.orders;
 create trigger trg_orders_updated_at
 before update on public.orders
@@ -80,14 +75,72 @@ create trigger trg_on_auth_user_created_profile
   for each row execute function public.handle_new_user_profile();
 
 -- Auto-create role on signup (first admin binding by email)
+-- Getter: super admin email list from Vault
+create or replace function public.get_super_admin_emails()
+returns text[]
+language plpgsql
+stable
+security definer
+as $$
+declare
+  v_secret text;
+  emails text[] := '{}';
+begin
+  begin
+    select decrypted_secret into v_secret
+    from vault.decrypted_secrets
+    where name = 'super_admin_emails'
+    limit 1;
+  exception when undefined_table or invalid_schema_name or insufficient_privilege then
+    v_secret := null; -- Vault not available; default to empty list
+  end;
+  if v_secret is not null and length(btrim(v_secret)) > 0 then
+    emails := regexp_split_to_array(v_secret, '\\s*,\\s*');
+  end if;
+  return emails;
+end; $$;
+
+-- Setter: create/update super_admin_emails in Vault
+create or replace function public.set_super_admin_emails(p_emails text)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_id uuid;
+begin
+  -- Look up secret id by unique name
+  begin
+    select id into v_id from vault.secrets where name = 'super_admin_emails' limit 1;
+  exception when undefined_table or invalid_schema_name or insufficient_privilege then
+    v_id := null;
+  end;
+
+  if v_id is not null then
+    -- Update using UUID per Vault API
+    begin
+      perform vault.update_secret(v_id, p_emails, 'super_admin_emails', 'super admin email whitelist, comma-separated');
+    exception when others then
+      raise notice 'Unable to update Vault secret super_admin_emails';
+    end;
+  else
+    -- Create if not exists
+    begin
+      perform vault.create_secret(p_emails,'super_admin_emails','super admin email whitelist, comma-separated');
+    exception when others then
+      raise notice 'Unable to create Vault secret super_admin_emails';
+    end;
+  end if;
+end; $$;
+
 create or replace function public.handle_new_user_role()
 returns trigger as $$
+declare
+  new_role public.app_role;
 begin
+  new_role := case when new.email = ANY(public.get_super_admin_emails()) then 'super_admin' else 'user' end;
   insert into public.user_roles (user_id, role)
-  values (
-    new.id,
-    case when new.email = 'dp0x7ce@gmail.com' then 'super_admin'::public.app_role else 'user'::public.app_role end
-  )
+  values (new.id, new_role)
   on conflict (user_id) do nothing;
   return new;
 end; $$ language plpgsql security definer;
@@ -140,7 +193,7 @@ language sql
 stable
 as $$
   select case when p_text is null then null
-              else encode(pgp_sym_encrypt(p_text, current_setting('app.crypto_key', true)), 'base64') end;
+              else encode(extensions.pgp_sym_encrypt(p_text, current_setting('app.crypto_key', true)), 'base64') end;
 $$;
 
 create or replace function public.decrypt_text(p_cipher text)
@@ -155,7 +208,7 @@ begin
     return null;
   end if;
   begin
-    v_plain := convert_from(pgp_sym_decrypt(decode(p_cipher, 'base64'), current_setting('app.crypto_key', true)), 'utf8');
+    v_plain := convert_from(extensions.pgp_sym_decrypt(decode(p_cipher, 'base64'), current_setting('app.crypto_key', true)), 'utf8');
     return v_plain;
   exception when others then
     -- not decryptable (not ours), return null to avoid leaking
@@ -198,66 +251,4 @@ create trigger trg_virtual_cards_encrypt
 before insert or update on public.virtual_cards
 for each row execute function public.encrypt_virtual_card_fields();
 
--- Admin RPC: list virtual cards with decrypted fields
-create or replace function public.admin_list_virtual_cards()
-returns setof public.virtual_cards_admin
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select * from public.virtual_cards_admin
-  where public.is_admin(auth.uid());
-$$;
-
--- Cleanup removed enum type after models have been applied
-do $$ begin
-  if exists (select 1 from pg_type where typnamespace = 'public'::regnamespace and typname = 'card_brand') then
-    execute 'drop type public.card_brand';
-  end if;
-end $$;
-
--- =============================================================
--- Auth Hook: Customize Access Token (JWT) Claims
--- Inject application role into the JWT at issue/refresh time.
--- This function is invoked by Supabase Auth with an `event jsonb` payload
--- containing at least `{ "user_id": "<uuid>", "claims": { ... } }`.
--- It must return the modified event jsonb (with updated `claims`).
---
--- We write `app_metadata.app_role` so our middleware/server can read it
--- without an extra RPC. The underlying role source is public.user_roles via
--- the existing security-definer helper public.get_app_role(uuid).
--- =============================================================
-create or replace function public.custom_access_token_hook(event jsonb)
-returns jsonb
-language plpgsql
-stable
-as $$
-declare
-  claims jsonb;
-  app_role_value public.app_role;
-  uid uuid := (event->>'user_id')::uuid;
-begin
-  -- Read role from our single source of truth
-  select public.get_app_role(uid) into app_role_value;
-
-  -- Start from existing claims, ensure object
-  claims := coalesce(event->'claims', '{}'::jsonb);
-
-  -- Write nested claim: app_metadata.app_role
-  claims := jsonb_set(claims, '{app_metadata,app_role}', to_jsonb(app_role_value::text));
-
-  -- Persist back into event and return
-  event := jsonb_set(event, '{claims}', claims);
-  return event;
-end; $$;
-
--- Permissions for the Auth hook runner
-do $$ begin
-  grant usage on schema public to supabase_auth_admin;
-  grant execute on function public.custom_access_token_hook(jsonb) to supabase_auth_admin;
-  revoke execute on function public.custom_access_token_hook(jsonb) from public, anon, authenticated;
-exception when others then
-  -- ignore in local migrations where role may not exist
-  null;
-end $$;
+-- admin RPCs moved to 06_admin_rpcs.sql (depends on views)

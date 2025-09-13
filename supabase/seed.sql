@@ -1,15 +1,21 @@
--- Development seed data
+-- Development seed data (dev-only)
+-- This file is executed by `supabase db reset` (local/linked).
+-- No psql required. CLI reads supabase/seed.sql automatically.
 
--- Ensure initial super_admin for dp0x7ce@gmail.com (dev convenience)
--- Prerequisite: the user has signed in at least once so there is a row in auth.users
--- RLS blocks inserts on public.user_roles for non-super admins, so temporarily disable RLS
-do $$ begin
-  if exists (select 1 from auth.users where email = 'dp0x7ce@gmail.com') then
+-- Configure super admin emails via Vault (dev-only convenience)
+select public.set_super_admin_emails('dp0x7ce@gmail.com');
+
+do $$
+declare
+  emails text[];
+begin
+  emails := public.get_super_admin_emails();
+  if emails is not null and array_length(emails, 1) is not null then
     execute 'alter table public.user_roles disable row level security';
     insert into public.user_roles (user_id, role)
-    select id, 'super_admin'::public.app_role
-    from auth.users
-    where email = 'dp0x7ce@gmail.com'
+    select u.id, 'super_admin'::public.app_role
+    from auth.users u
+    where u.email = ANY(emails)
     on conflict (user_id) do update set role = excluded.role;
     execute 'alter table public.user_roles enable row level security';
   end if;

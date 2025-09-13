@@ -1,5 +1,3 @@
-create or replace view public.active_packages as
-select * from public.packages where deleted_at is null;
 
 -- Public catalog: products (declared inventory only)
 create or replace view public.products_public as
@@ -40,3 +38,19 @@ select
   vc.created_at,
   vc.updated_at
 from public.virtual_cards vc;
+
+-- Grants for views
+grant select on public.virtual_cards_admin to authenticated;
+
+-- Admin RPCs colocated with their views for easier maintenance
+-- Admin RPC: list virtual cards with decrypted fields
+create or replace function public.admin_list_virtual_cards()
+returns setof public.virtual_cards_admin
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select * from public.virtual_cards_admin
+  where public.is_admin(auth.uid());
+$$;

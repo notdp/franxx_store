@@ -6,7 +6,7 @@ create table public.ios_accounts (
   password_encrypted   text not null,
   region               text, -- e.g., NG/US/GB/JP
   phone_number         text,
-  virtual_card_id      uuid references public.virtual_cards(id) on delete set null,
+  virtual_card_id      uuid,
   status               public.ios_account_status not null default 'active',
   slot_combo           public.slot_combo not null default 'none',
   risk_control_until   timestamptz,
@@ -21,4 +21,4 @@ create table public.ios_accounts (
 
 create index if not exists idx_ios_accounts_status on public.ios_accounts(status);
 create index if not exists idx_ios_accounts_region on public.ios_accounts(region);
-
+create index if not exists idx_ios_accounts_virtual_card on public.ios_accounts(virtual_card_id);

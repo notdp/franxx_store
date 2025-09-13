@@ -7,7 +7,7 @@ create table public.email_accounts (
   phone_number       text,
   recovery_email     text,
   status             public.email_status not null default 'available',
-  current_user_id    uuid references public.users(id) on delete set null,
+  current_user_id    uuid,
   allocated_at       timestamptz,
   reserved_until     timestamptz,
   notes              text,
@@ -17,4 +17,3 @@ create table public.email_accounts (
 
 create index if not exists idx_email_accounts_status on public.email_accounts(status);
 create index if not exists idx_email_accounts_user on public.email_accounts(current_user_id);
-

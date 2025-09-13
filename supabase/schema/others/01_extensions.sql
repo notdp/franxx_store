@@ -1,6 +1,8 @@
 -- Extensions
 create extension if not exists "uuid-ossp";
 create extension if not exists pgcrypto; -- gen_random_uuid(), pgp_sym_encrypt
+-- Supabase Vault for managing secrets (e.g., super_admin_emails)
+create extension if not exists supabase_vault;
 
 -- Ensure a default crypto key for development (override in production)
 do $$

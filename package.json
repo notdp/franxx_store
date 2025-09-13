@@ -73,14 +73,9 @@
             "lint": "next lint",
             "lint:fix": "next lint --fix",
             "typecheck": "tsc -p tsconfig.json --noEmit",
-            "db:apply": "make db-apply",
-            "db:test": "make db-test",
-            "db:console": "make db-console",
-            "db:seed": "make db-seed",
-            "db:backup": "make db-backup",
-            "db:reset": "make db-reset",
-            "db:tables": "make db-tables",
-            "db:count": "make db-count",
-            "db:types": "make db-types"
+            "db:baseline:build": "node scripts/flatten-baseline.cjs",
+            "db:reset:linked": "supabase db reset --linked",
+            "db:push:linked": "supabase db push --linked",
+            "db:types:linked": "supabase gen types typescript --linked --schema public > app/types/database.types.ts"
       }
 }

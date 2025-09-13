@@ -1,122 +1,110 @@
-# Supabase 数据库设置指南
+# Supabase 数据库与迁移工作流
 
-## 开发期：单一事实源（SSoT）
+该目录提供一套“DDL 优先 + 单一基线（flattened baseline）+ 远端 dev 重置”的数据库工作流，仅使用 Supabase CLI（无需 DB_URL/psql）。
 
-开发阶段不再产出多份迁移，统一维护 `./supabase/schema/` 下的 SQL（按 01–05 顺序）：
+## 目录结构（按应用顺序）
 
-- `01_extensions.sql`：扩展
-- `02_types.sql`：枚举/类型
-- `models/*.sql`：业务表（users/user_roles/packages/orders/payment_logs/products/virtual_cards/ios_accounts/email_accounts/email_platform_status/payments）
-- `03_functions.sql`：函数与触发器
-- `04_rls.sql`：RLS 策略与基础 GRANT
-- `05_views.sql`：视图
-- `schema.sql` 为入口文件，按如上次序逐个 `\i` 引入。
-- 本地或开发库重建：
+- `schema/others/01_extensions.sql`：扩展与开发期默认配置（pgcrypto、supabase_vault、开发默认 crypto_key）
+- `schema/others/02_types.sql`：枚举与类型
+- `schema/models/*.sql`：业务表（无外键，配合索引与孤儿检查）
+- `schema/others/04_functions.sql`：函数与触发器（含 OAuth 同步与管理员判定、加解密工具、updated_at 触发器）
+- `schema/others/05_views.sql`：视图与管理侧 RPC（与依赖视图共置）
+- `schema/others/06_auth_hooks.sql`：Access Token Hook（把 `user_role` 注入 JWT）
+- `schema/others/07_rls.sql`：RLS 策略与授权（最后应用）
+- `schema/others/08_orphan_checks.sql`：孤儿检查视图（dev-only，辅助无外键设计）
+- `migrations/00000000000000_baseline.sql`：由脚本生成的扁平化基线
+- `seed.sql`：开发环境种子（不写 `auth.*`，仅做最小必要数据）
+- `scripts/flatten-baseline.cjs`：展开 `schema/*` 为单一基线的脚本
+- `Makefile`：CLI 的薄封装（`db.link/db.baseline/db.reset/db.push/db.types`）
 
-```bash
-export DB_URL="postgres://user:pass@host:5432/dbname"
-npm run db:apply
-npm run db:seed   # 可选：插入样例套餐
-```
-
-新增表（与文档设计一致）：
-
-- `models/products.sql`：商品目录（平台 `openai/anthropic`、服务 `tag` 枚举、定价与库存声明）
-- `models/virtual_cards.sql`：虚拟卡（`pan_encrypted/cvv_encrypted/last4/brand` 等，加密存储，仅管理员可见）
-- `models/ios_accounts.sql`：iOS 账号（绑定虚拟卡，`slot_combo` 合并占用位）
-- `models/email_accounts.sql`：邮箱账号（可分配/保留/回收）
-- `models/email_platform_status.sql`：邮箱在各平台状态（`openai/anthropic`）
-- `models/payments.sql`：Stripe 支付流水（Checkout/PI/Charge/Refund 各 ID + 幂等 `stripe_event_id`）
-
-生成 TypeScript 数据库类型：
+## 基本用法（远端 dev）
 
 ```bash
-npm run db:types
+# 1) 登录并链接项目（一次性）
+supabase login
+export NEXT_PUBLIC_SUPABASE_PROJECT_REF=<YOUR_REF>
+make db.link
+
+# 2) 生成扁平化基线
+make db.baseline
+
+# 3) 重置远端 dev（危险操作，需确认；会执行 seed.sql）
+make db.reset
+
+# 4) 日常小改用增量迁移（非破坏性）
+make db.push
+
+# 5) 生成 TS 类型
+make db.types
 ```
 
-当模型稳定、准备上生产时，再用 Supabase CLI 生成一次基线迁移：
+## OAuth 同步与管理员判定
 
-```bash
-supabase db diff -f baseline_init
+- 仅支持 GitHub/Google 登录。`auth.users` 新增行后，两个触发器会运行：
+  - `public.handle_new_user_profile()`：同步资料到 `public.users`（`provider` 取自 `raw_app_meta_data->>'provider'`）。
+  - `public.handle_new_user_role()`：授予角色，规则见下。
+- 管理员判定数据源：Supabase Vault 中的 `super_admin_emails` 密文（逗号分隔邮箱）。
+  - Getter：`public.get_super_admin_emails() returns text[]`
+  - Setter：`public.set_super_admin_emails(text)`（若存在则按 UUID 更新，否则创建）
+  - 触发器逻辑：`new.email = ANY(public.get_super_admin_emails())` → `super_admin`，否则 `user`。
+- 访问令牌 Hook（可选）：`public.custom_access_token_hook(jsonb)` 会把 `user_role` 注入 JWT；需要在 Dashboard → Auth → Settings 启用。
+
+### 设置/更新管理员邮箱（推荐）
+
+- 通过 helper 设置（需要 Vault 权限）：
+
+```sql
+select public.set_super_admin_emails('dp0x7ce@gmail.com,admin2@example.com');
 ```
 
-后续再进入迁移化流程。
+- 或直接用 Vault SQL（更新需 UUID）：
 
-## 配置 OAuth 认证
-
-### Google OAuth 设置
-
-1. 在 Supabase Dashboard 中进入 **Authentication** > **Providers**
-2. 启用 **Google** provider
-3. 添加 Google OAuth 客户端 ID 和密钥
-4. 设置重定向 URL：`https://njfnsiwznqjbjqohuukc.supabase.co/auth/v1/callback`
-
-### GitHub OAuth 设置
-
-1. 在 Supabase Dashboard 中进入 **Authentication** > **Providers**
-2. 启用 **GitHub** provider
-3. 添加 GitHub OAuth App ID 和密钥
-4. 设置重定向 URL：`https://njfnsiwznqjbjqohuukc.supabase.co/auth/v1/callback`
-
-## 环境变量配置
-
-确保在 `.env.local` 文件中设置了以下变量：
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://njfnsiwznqjbjqohuukc.supabase.co
-# New API keys
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-# Server secret (replaces legacy service role)
-SUPABASE_SECRET_KEY=your-secret-key
+```sql
+select vault.create_secret('super_admin_emails', 'dp0x7ce@gmail.com');
+-- 或
+select vault.update_secret('<secret_uuid>', 'a@x.com,b@y.com', 'super_admin_emails', null);
 ```
 
-## 测试认证流程
+- 查看当前密文（解密视图）：
 
-1. 启动开发服务器：
-```bash
-npm run dev
+```sql
+select * from vault.decrypted_secrets where name = 'super_admin_emails';
 ```
 
-2. 访问 http://localhost:3000/login
-3. 测试 Google 和 GitHub 登录
+## 种子（seed）策略
 
-## 数据库结构
+- 不直接写 `auth.*`。首次 OAuth 登录由 GoTrue 写入 `auth.users`，触发器自动同步资料与角色。
+- `seed.sql` 会：
+  - 调用 `public.set_super_admin_emails(...)`（如权限不足将输出 NOTICE，不会中断），
+  - 读取 `public.get_super_admin_emails()`，对已存在的匹配邮箱用户执行 `user_roles` 的 upsert（保证本地/预览环境可立即具备超管），
+  - 设置会话 `app.crypto_key`，并写入一批开发用虚拟卡测试数据（自动加密）。
 
-### 表结构（public schema）
+## 无外键与数据一致性
 
-- `users`：用户资料（扩展 `auth.users`），含 `stripe_customer_id`
-- `user_roles`：用户角色（`app_role` 枚举：user/admin/super_admin）
-- `packages`：订阅套餐（支持软删 `deleted_at`）
-- `products`：商品目录（`platform/tag` 枚举、定价、库存声明）
-- `orders`：订单（新增 `final_amount/discount_type/discount_snapshot/currency/payment_status` 等，同时保留旧字段兼容 UI）
-- `payments`：Stripe 流水（`cs_/pi_/ch_/re_/cus_/evt_` 字段与状态）
-- `virtual_cards`：虚拟卡（敏感信息加密存储）
-- `ios_accounts`：iOS 账号（`slot_combo` 聚合占位）
-- `email_accounts`：邮箱账号
-- `email_platform_status`：邮箱在 OpenAI/Anthropic 的平台状态
-- `payment_logs`：Stripe Webhook 事件原始日志（仅 service role 访问）
+- 为了性能与迁移灵活性，模型不使用外键。通过：
+  - 必要索引（如 `idx_orders_user_id/idx_payments_order` 等），
+  - 孤儿检查视图（`vw_orphan_*`）
+  来保障可观测的一致性。若在 CI/运维中发现孤儿数据，再由任务修复。
 
-### RLS 策略
+## 加密与密钥
 
-- `users`：本人可读写；管理员可读全量
-- `user_roles`：本人可读；仅 `super_admin` 可写
-- `packages`：所有人可读；仅管理员可写
-- `products`：所有人可读（在售）；仅管理员可写
-- `orders`：本人（按 `user_id` 或邮箱）可读/写部分状态；管理员可读写
-- `payments`：本人可读（通过 `orders` 关联）；仅管理员可写
-- `virtual_cards` / `ios_accounts` / `email_accounts` / `email_platform_status`：仅管理员可管理
-- `payment_logs`：不创建策略（仅 service role 可越过 RLS）
+- 使用 `pgcrypto` 的对称加解密（`extensions.pgp_sym_encrypt/pgp_sym_decrypt`）封装为 `public.encrypt_text/decrypt_text`，需要 `app.crypto_key`。
+- 开发期在 `01_extensions.sql` 中尝试对数据库设置默认密钥（若权限不足会忽略）；`seed.sql` 也会为当前会话设置兜底密钥。
+- 生产请把密钥配置到数据库参数或通过安全的方式注入，避免明文散播；敏感数据（如 CVV）不建议在生产环境存储。
 
-## 故障排除
+## 常见问题（FAQ）
 
-### 认证问题
+- 重置时报错“Unable to set Vault secret super_admin_emails”？
+  - 这是权限不足时 helper 的 NOTICE。请在 Dashboard SQL 控制台用 `vault.create_secret` 创建一次；之后 helper 的更新就会成功。
+- 登录后角色仍是 `user`？
+  - 确认 `vault.decrypted_secrets` 有 `super_admin_emails`，且邮箱完全匹配；
+  - 确认已启用 Access Token Hook（仅影响 JWT 展现，RLS 仍按 `user_roles` 判定）。
+- 为什么不用 GUC 存邮箱？
+  - Supabase 托管实例通常不允许 `ALTER DATABASE` 设置自定义 GUC；因此改为 Vault 方案。
 
-- 确保 OAuth 回调 URL 配置正确
-- 检查环境变量是否正确设置
-- 查看浏览器控制台错误信息
+## 附：当前约束与约定
 
-### 数据库连接问题
+- 仅 GitHub/Google 作为 provider；`public.users.provider` 上有 check 约束。
+- RLS 一律最后应用；函数/触发器带 `SECURITY DEFINER` 以便在 RLS 开启后仍能运行。
+- 管理侧视图默认授予最小可见性，建议仅通过 `SECURITY DEFINER` 的 RPC 暴露敏感数据。
 
-- 确认 Supabase 项目已启动
-- 检查网络连接
-- 验证 API 密钥是否正确
