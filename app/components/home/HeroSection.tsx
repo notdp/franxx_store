@@ -16,12 +16,9 @@ export function HeroSection({ onPrimaryClick }: HeroSectionProps) {
     else {
       const target = document.querySelector('#franxx-selection') as HTMLElement | null
       if (!target) return
-      const header = document.querySelector('header') as HTMLElement | null
-      const headerH = header?.getBoundingClientRect().height ?? 0
       const rect = target.getBoundingClientRect()
       const absoluteTop = window.scrollY + rect.top
-      const top = Math.max(0, absoluteTop - headerH)
-      window.scrollTo({ top, behavior: 'smooth' })
+      window.scrollTo({ top: Math.max(0, absoluteTop), behavior: 'smooth' })
     }
   }, [onPrimaryClick])
 
