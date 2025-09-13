@@ -54,7 +54,7 @@ function OrderPageInner() {
 
     // 保存订单数据到 sessionStorage 以便在成功页面使用
     sessionStorage.setItem('currentOrder', JSON.stringify(order))
-    router.push('/success')
+    router.push('/payment/success')
   }
 
   return (

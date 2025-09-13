@@ -9,7 +9,11 @@ const STRICT_ADMIN_IN_MW = process.env.FRX_STRICT_MW_ADMIN === '1'
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const inAdmin = pathname.startsWith('/admin')
-  const inProtected = inAdmin || pathname.startsWith('/orders') || pathname.startsWith('/profile')
+  const inProtected =
+    inAdmin ||
+    pathname.startsWith('/orders') ||
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/payment')
 
   // 避免 Next<Link> 预取触发重定向导致的缓存/跳转异常
   const isPrefetch =
@@ -97,5 +101,5 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // 仅在需要保护的页面运行中间件，减少无关路由开销
-  matcher: ['/admin/:path*', '/orders/:path*', '/profile/:path*'],
+  matcher: ['/admin/:path*', '/orders/:path*', '/profile/:path*', '/payment/:path*'],
 }

@@ -12,11 +12,11 @@ export default function Profile() {
     router.push('/')
   }
 
-  // SSR 布局已做登录校验，这里不再阻塞渲染
-
+  // SSR 受保护布局已做登录校验
   return (
     <div className="min-h-screen bg-background">
       <ProfilePage onBack={handleBack} />
     </div>
   )
 }
+
