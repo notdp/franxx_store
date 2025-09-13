@@ -49,22 +49,25 @@ supabase db diff -f baseline_init
 1. 在 Supabase Dashboard 中进入 **Authentication** > **Providers**
 2. 启用 **Google** provider
 3. 添加 Google OAuth 客户端 ID 和密钥
-4. 设置重定向 URL：`https://ouluzigygowgmeetahln.supabase.co/auth/v1/callback`
+4. 设置重定向 URL：`https://njfnsiwznqjbjqohuukc.supabase.co/auth/v1/callback`
 
 ### GitHub OAuth 设置
 
 1. 在 Supabase Dashboard 中进入 **Authentication** > **Providers**
 2. 启用 **GitHub** provider
 3. 添加 GitHub OAuth App ID 和密钥
-4. 设置重定向 URL：`https://ouluzigygowgmeetahln.supabase.co/auth/v1/callback`
+4. 设置重定向 URL：`https://njfnsiwznqjbjqohuukc.supabase.co/auth/v1/callback`
 
 ## 环境变量配置
 
 确保在 `.env.local` 文件中设置了以下变量：
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://ouluzigygowgmeetahln.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=https://njfnsiwznqjbjqohuukc.supabase.co
+# New API keys
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+# Server secret (replaces legacy service role)
+SUPABASE_SECRET_KEY=your-secret-key
 ```
 
 ## 测试认证流程

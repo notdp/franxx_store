@@ -3,10 +3,17 @@ import { stripe } from '@/lib/stripe/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 
-// 创建 Supabase 客户端（使用 service role）
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+// 创建 Supabase 客户端（必须使用 server secret key）
+const serviceKey = process.env.SUPABASE_SECRET_KEY
+if (!serviceKey) {
+  throw new Error('Missing SUPABASE_SECRET_KEY for Stripe webhook handler')
+}
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  serviceKey
 );
 
 // Stripe webhook 处理

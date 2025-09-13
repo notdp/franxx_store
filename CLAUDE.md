@@ -73,7 +73,8 @@ rm -rf .next
 ```bash
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=你的_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=你的_supabase_anon_key
+# 已迁移至新 API Key：
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=你的_supabase_publishable_key
 
 # Stripe
 STRIPE_SECRET_KEY=你的_stripe_secret_key

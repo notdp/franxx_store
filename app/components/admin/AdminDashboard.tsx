@@ -27,7 +27,6 @@ export function AdminDashboard({ onBackToMain }: AdminDashboardProps = {}) {
       if (logout) {
         await logout();
       }
-      handleBackToMain();
     } catch (error) {
       console.error('Sign out error:', error);
     }

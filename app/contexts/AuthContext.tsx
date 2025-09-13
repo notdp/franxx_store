@@ -1,9 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation'
+import { decodeJwt } from 'jose'
 import { User, AuthContextType, UserRole } from '@/types';
+import { log } from '@/lib/log'
 import { supabase } from '@/lib/supabase/client';
 import { logout as serverLogout } from '@/actions/auth'
+import { toast } from 'sonner'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -26,43 +30,10 @@ export function useAuth() {
   return context;
 }
 
-// 角色缓存 TTL（模块级常量，避免 useEffect 依赖抖动）
-const TTL_MS = 8 * 60 * 60 * 1000; // 8小时
-
-// 本地缓存读写（模块级函数，避免 effect 依赖）
-function readCachedRole(userId: string): UserRole | null {
-  try {
-    const key = `franxx:role:${userId}`
-    const raw = localStorage.getItem(key)
-    if (raw) {
-      const obj = JSON.parse(raw) as { role?: UserRole; exp?: number }
-      if (obj?.role && (obj.exp ?? 0) > Date.now()) {
-        if (obj.role === 'user' || obj.role === 'admin' || obj.role === 'super_admin') return obj.role
-      } else {
-        localStorage.removeItem(key)
-      }
-    }
-    const legacy = localStorage.getItem(`frx_role:${userId}`)
-    if (legacy && (legacy === 'user' || legacy === 'admin' || legacy === 'super_admin')) {
-      writeCachedRole(userId, legacy as UserRole)
-      localStorage.removeItem(`frx_role:${userId}`)
-      return legacy as UserRole
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-function writeCachedRole(userId: string, role: UserRole) {
-  try {
-    const key = `franxx:role:${userId}`
-    const payload = JSON.stringify({ role, exp: Date.now() + TTL_MS })
-    localStorage.setItem(key, payload)
-  } catch {}
-}
+// 已移除本地角色缓存：角色一律来自 Access Token 的自定义声明
 
 export function AuthProvider({ children, initialUser }: { children: React.ReactNode; initialUser?: User | null }) {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   // loading 表示会话加载中（是否已登录）
   const [loading, setLoading] = useState<boolean>(initialUser ? false : true);
@@ -70,30 +41,22 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
   const [roleLoading, setRoleLoading] = useState<boolean>(initialUser ? false : true);
 
   // 获取用户角色的辅助函数
-  const getUserRole = useCallback(async (userId: string): Promise<UserRole> => {
+  // 优先从 access_token 自定义 claim（user_role 或 app_metadata.app_role）读取，零网络
+  const roleFromSessionToken = async (): Promise<UserRole | null> => {
     try {
-      // 单次 RPC：由后端直接给出角色，稳定且避免多次往返
-      const { data: roleValue, error: rpcErr } = await (supabase as any).rpc('get_app_role', { check_user_id: userId })
-      if (!rpcErr && (roleValue === 'user' || roleValue === 'admin' || roleValue === 'super_admin')) {
-        writeCachedRole(userId, roleValue)
-        return roleValue
-      }
-      // 回退：尝试表读取（不应常用）
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-      if (!error && data?.role) {
-        writeCachedRole(userId, data.role)
-        return data.role as UserRole
-      }
-      return 'user'
-    } catch (error) {
-      console.error('Error in getUserRole:', error);
-      return 'user';
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return null
+      const payload: any = decodeJwt(token)
+      const cand = payload?.user_role || payload?.app_metadata?.app_role || payload?.app_role || payload?.role
+      if (cand === 'user' || cand === 'admin' || cand === 'super_admin') return cand
+      return null
+    } catch {
+      return null
     }
-  }, [])
+  }
+
+  // 不再发起 RPC；仅从 JWT 读取角色，缺省为 user。
 
   useEffect(() => {
     // 检查是否使用模拟用户（可通过环境变量控制）
@@ -116,9 +79,10 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
         data: { subscription },
       } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
-          // 后台静默校正角色：不再切换 roleLoading，避免 UI 延迟
+          // 后台静默校正角色：来自 Access Token 或缓存
           try {
-            const role = await getUserRole(session.user.id);
+            const metaRole = await roleFromSessionToken()
+            const role = (metaRole ?? 'user') as UserRole
             const updated: User = {
               id: session.user.id,
               email: session.user.email || '',
@@ -134,7 +98,7 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
             };
             setUser(updated);
           } catch (e) {
-            console.error('Error fetching role (onAuthStateChange, SSR bootstrap):', e);
+            log.error('Auth', 'Error updating role (onAuthStateChange, SSR bootstrap):', e);
           }
         } else {
           setUser(null);
@@ -153,17 +117,13 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
     // 会话查询兜底，防止一直 pending
     const sessionSafetyTimer = setTimeout(() => {
       if (!didCancel) {
-        console.warn('[Auth] Session check timeout, falling back to anonymous user');
+        log.warn('Auth', 'Session check timeout, falling back to anonymous user');
         setLoading(false);
       }
     }, 5000);
 
-    // 角色查询兜底（直接降级为普通用户，避免无限等待）
-    let roleSafetyTimer: ReturnType<typeof setTimeout> | null = null;
-
     const fillUserFromSession = (sessionUser: any, role: UserRole = 'user') => {
-      const cached = readCachedRole(sessionUser.id)
-      const effectiveRole = role !== 'user' ? role : (cached ?? role)
+      const effectiveRole = role
       const userData: User = {
         id: sessionUser.id,
         email: sessionUser.email || '',
@@ -180,52 +140,77 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
       setUser(userData);
     };
 
+    const readCookie = (name: string): string | null => {
+      try {
+        if (typeof document === 'undefined') return null
+        const match = document.cookie
+          .split('; ')
+          .find((row) => row.startsWith(`${encodeURIComponent(name)}=`))
+        if (!match) return null
+        const value = match.split('=')[1]
+        return value ? decodeURIComponent(value) : null
+      } catch { return null }
+    }
+
+    const seedSessionFromCookies = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) return
+        const at = readCookie('sb-access-token') || readCookie('sb:access-token')
+        const rt = readCookie('sb-refresh-token') || readCookie('sb:refresh-token')
+        if (at && rt) {
+          await supabase.auth.setSession({ access_token: at, refresh_token: rt })
+        }
+      } catch {}
+    }
+
+    const maybeForceRefreshOnHS256 = async () => {
+      try {
+        // 防止循环：只在本标签页尝试一次
+        if (sessionStorage.getItem('franxx:refreshed-hs256') === '1') return
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) return
+        const headerB64 = token.split('.')[0]
+        const header = JSON.parse(atob(headerB64.replace(/-/g, '+').replace(/_/g, '/')))
+        const alg = String(header?.alg || '')
+        // 仅当 alg 仍为 HS* 且启用了本地 JWKS（代表我们期望 ES256）时，做一次刷新尝试
+        const wantEs256 = Boolean(process.env.NEXT_PUBLIC_FORCE_REFRESH_ON_HS256 === '1')
+        if (wantEs256 && alg.startsWith('HS')) {
+          const { error } = await supabase.auth.refreshSession()
+          if (!error) sessionStorage.setItem('franxx:refreshed-hs256', '1')
+        }
+      } catch {}
+    }
+
     const getSession = async () => {
       setLoading(true);
       setRoleLoading(true);
       try {
+        // Ensure browser client is hydrated from cookies after OAuth callback
+        await seedSessionFromCookies()
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        // 若检测到 HS256，而我们期望 ES256，则尝试一次刷新
+        await maybeForceRefreshOnHS256()
 
         if (didCancel) return;
 
         if (session?.user) {
-          // 先用默认角色+缓存填充
-          fillUserFromSession(session.user, 'user');
-          setLoading(false);
-      const cachedRole = readCachedRole(session.user.id)
-          if (cachedRole) {
-            // 若有缓存，立即结束 roleLoading，避免等待 3s 占位
-            setRoleLoading(false)
-          } else {
-            // 无缓存时才设置兜底超时
-            roleSafetyTimer = setTimeout(() => {
-              if (!didCancel) {
-                console.warn('[Auth] Role fetch timeout, fallback to user role');
-                setRoleLoading(false);
-              }
-            }, 3000);
-          }
-
-          try {
-            const role = await getUserRole(session.user.id);
-            if (didCancel) return;
-            fillUserFromSession(session.user, role);
-            writeCachedRole(session.user.id, role)
-          } catch (e) {
-            console.error('Error fetching role:', e);
-          } finally {
-            if (!didCancel) setRoleLoading(false);
-            if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
-          }
+          // 角色来自 JWT claim；不再发 RPC/不再依赖本地缓存
+          const metaRole = await roleFromSessionToken()
+          const role = (metaRole ?? 'user') as UserRole
+          fillUserFromSession(session.user, role)
+          setLoading(false)
+          setRoleLoading(false)
         } else {
           setUser(null);
           setLoading(false);
           setRoleLoading(false);
         }
       } catch (error) {
-        console.error('Error getting session:', error);
+        log.error('Auth', 'Error getting session:', error);
         setUser(null);
         setLoading(false);
         setRoleLoading(false);
@@ -239,48 +224,26 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
     // 监听认证状态变化
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (session?.user) {
-          // 先设置基础信息 + 缓存
-          fillUserFromSession(session.user, 'user');
-          setLoading(false);
-          const cachedRole = readCachedRole(session.user.id)
-          setRoleLoading(!cachedRole)
-          // 加入兜底
-          if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
-          if (!cachedRole) {
-            roleSafetyTimer = setTimeout(() => {
-              if (!didCancel) {
-                console.warn('[Auth] Role fetch timeout (onAuthStateChange)');
-                setRoleLoading(false);
-              }
-            }, 3000);
-          }
-
-        try {
-          const role = await getUserRole(session.user.id);
-          if (didCancel) return;
-          fillUserFromSession(session.user, role);
-        } catch (e) {
-          console.error('Error fetching role (onAuthStateChange):', e);
-        } finally {
-          if (!didCancel) setRoleLoading(false);
-          if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
-        }
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const metaRole = await roleFromSessionToken()
+        const role = (metaRole ?? 'user') as UserRole
+        fillUserFromSession(session.user, role)
+        setLoading(false)
+        setRoleLoading(false)
       } else {
-        setUser(null);
-        setLoading(false);
-        setRoleLoading(false);
+        setUser(null)
+        setLoading(false)
+        setRoleLoading(false)
       }
     });
 
     return () => {
       didCancel = true;
       clearTimeout(sessionSafetyTimer);
-      if (roleSafetyTimer) clearTimeout(roleSafetyTimer);
       subscription.unsubscribe();
     };
-  }, [initialUser, getUserRole]);
+  }, [initialUser]);
 
   const signInWithOAuth = async (provider: 'google' | 'github') => {
     try {
@@ -291,21 +254,29 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
         return { error: null };
       }
 
+      // 保留登录前目标页（/login?next=...）
+      let nextParam = '/'
+      try {
+        const url = new URL(window.location.href)
+        const q = url.searchParams.get('next')
+        if (q && q.startsWith('/')) nextParam = q
+      } catch {}
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextParam)}`
         }
       });
       
       if (error) {
-        console.error('Login error:', error);
+        log.error('Auth', `${provider} login error:`, error);
         return { error };
       }
       
       return { error: null };
     } catch (error: any) {
-      console.error('Login failed:', error);
+      log.error('Auth', 'Login failed:', error);
       return { error };
     }
   };
@@ -313,21 +284,45 @@ export function AuthProvider({ children, initialUser }: { children: React.ReactN
   const logout = async () => {
     try {
       const USE_MOCK_USER = process.env.NEXT_PUBLIC_USE_MOCK_USER === 'true';
-      
+
       if (USE_MOCK_USER) {
         setUser(null);
+        toast.success('已退出登录');
         return;
       }
-      // 先清服务端 httpOnly 会话，再清客户端本地会话
-      try { await serverLogout() } catch (e) { console.warn('Server logout failed (ignored):', e) }
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Logout error:', error);
-        throw error;
-      }
-      setUser(null);
+
+      await toast.promise(
+        (async () => {
+          try { await serverLogout() } catch (e) { log.warn('Auth', 'Server logout failed (ignored):', e) }
+          const { error } = await supabase.auth.signOut();
+          if (error) {
+            log.error('Auth', 'Logout error:', error);
+            throw error;
+          }
+          try {
+            const expire = 'Thu, 01 Jan 1970 00:00:00 GMT'
+            document.cookie = `sb-access-token=; expires=${expire}; path=/;`
+            document.cookie = `sb-refresh-token=; expires=${expire}; path=/;`
+          } catch {}
+          try {
+            Object.keys(localStorage).forEach((k) => {
+              if (k.startsWith('franxx:role:') || k.startsWith('frx_role:')) localStorage.removeItem(k)
+            })
+          } catch {}
+          setUser(null);
+          try {
+            router.replace('/')
+            router.refresh()
+          } catch {}
+        })(),
+        {
+          loading: '正在退出...\u200b',
+          success: '已安全退出',
+          error: '退出失败，请重试',
+        }
+      )
     } catch (error) {
-      console.error('Logout failed:', error);
+      log.error('Auth', 'Logout failed:', error);
       throw error;
     }
   };

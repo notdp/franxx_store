@@ -1,3 +1,28 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:react-hooks/recommended"
+  ],
+  "plugins": ["unused-imports", "unicorn"],
+  "rules": {
+    "unused-imports/no-unused-imports": "warn",
+    "unused-imports/no-unused-vars": [
+      "warn",
+      { "vars": "all", "varsIgnorePattern": "^_", "args": "after-used", "argsIgnorePattern": "^_" }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["app/components/**/*.tsx"],
+      "excludedFiles": ["app/components/ui/**"],
+      "rules": {
+        "unicorn/filename-case": [
+          "warn",
+          {
+            "cases": { "pascalCase": true }
+          }
+        ]
+      }
+    }
+  ]
 }

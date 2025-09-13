@@ -1,13 +1,14 @@
 # Franxx Store Makefile
 
-# Database Configuration
-DB_HOST := aws-1-ap-southeast-1.pooler.supabase.com
-DB_PORT := 6543
-DB_NAME := postgres
-DB_USER := postgres.ouluzigygowgmeetahln
-# URL encode @ as %40 in password
-DB_PASS := QRE4jen%40fad8jgn6jrv
-DB_URL := postgresql://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)
+# Database Configuration (read from environment)
+# Export DATABASE_URL or set DB_URL when invoking make, e.g.:
+#   export DATABASE_URL=postgresql://user:pass@host:6543/db
+#   make db-apply
+DB_URL ?= $(DATABASE_URL)
+
+ifndef DB_URL
+$(warning DB_URL is not set. Please export DATABASE_URL or pass DB_URL=...)
+endif
 
 # Colors for output
 RED := \033[0;31m

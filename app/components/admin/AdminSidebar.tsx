@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import * as React from 'react'
 import { 
   Sidebar, 
   SidebarContent, 
@@ -22,6 +23,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Home, LogOut } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { menuItems, AdminPageType } from './constants';
 
 interface AdminSidebarProps {
@@ -38,8 +50,10 @@ export function AdminSidebar({
   onSignOut 
 }: AdminSidebarProps) {
   const { user } = useAuth();
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
 
   return (
+    <>
     <Sidebar variant="inset" collapsible="icon" className="border-r bg-sidebar">
       <SidebarHeader className="border-b px-2 py-2 bg-sidebar">
         <SidebarMenu>
@@ -167,7 +181,12 @@ export function AdminSidebar({
                   <Home className="w-4 h-4 mr-2" />
                   返回首页
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onSignOut}>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setConfirmOpen(true);
+                  }}
+                >
                   <LogOut className="w-4 h-4 mr-2" />
                   {user ? '退出登录' : '返回首页'}
                 </DropdownMenuItem>
@@ -177,5 +196,28 @@ export function AdminSidebar({
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+    {/* Confirm Logout Dialog mounted outside Dropdown */}
+    <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>确认退出登录？</AlertDialogTitle>
+          <AlertDialogDescription>
+            退出后将关闭管理员面板会话并返回首页。
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>取消</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setConfirmOpen(false);
+              onSignOut();
+            }}
+          >
+            确认退出
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

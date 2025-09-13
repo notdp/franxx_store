@@ -1,5 +1,8 @@
--- Flattened schema for Supabase SQL editor (no psql \i)
--- Generated: UTC 2025-09-10 16:27:29
+-- NOTE: Archived, read-only export.
+-- This file is a flattened snapshot intended for SQL editors that
+-- do not support psql include directives. Do not edit here.
+-- Single source of truth lives under: supabase/schema/*.sql
+-- 请勿直接修改本文件；唯一真源为 supabase/schema 目录下的分模块 SQL。
 SET client_min_messages TO WARNING;
 SET search_path TO public;
 
@@ -653,4 +656,3 @@ select
 from public.products p
 where p.status = 'on_sale';
 -- <<< END: supabase/schema/05_views.sql
-

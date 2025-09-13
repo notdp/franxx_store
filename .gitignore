@@ -9,4 +9,4 @@ node_modules/
 .env.development.local
 .env.test.local
 
-.DS_Store
+.DS_Storesupabase/.temp

@@ -1,12 +1,14 @@
 'use client'
 
+import { Suspense } from 'react'
 import { OrderForm } from '@/components/OrderForm'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import { packages } from '@/data/mockData'
 import { Order } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 
-export default function OrderPage() {
+function OrderPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -64,5 +66,22 @@ export default function OrderPage() {
         onLogin={handleLogin}
       />
     </div>
+  )
+}
+
+export default function OrderPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">加载中...</p>
+          </div>
+        </div>
+      }
+    >
+      <OrderPageInner />
+    </Suspense>
   )
 }

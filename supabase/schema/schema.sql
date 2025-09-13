@@ -23,3 +23,4 @@
 \i 03_functions.sql
 \i 04_rls.sql
 \i 05_views.sql
+\i 06_auth_hooks.sql

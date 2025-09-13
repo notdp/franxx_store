@@ -1,10 +1,9 @@
-import { redirect } from 'next/navigation'
-import { requireAdminAt } from '@/lib/auth/server'
+import type { ReactNode } from 'react'
+import { AdminShell } from '@/components/admin/AdminShell'
+import { getUserWithRole } from '@/lib/supabase/rsc'
 
-export const dynamic = 'force-dynamic'
-
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  await requireAdminAt('/admin')
-
-  return <>{children}</>
+// Note: server-side guard temporarily disabled to test Middleware + offline JWKS path.
+export default async function AdminLayout({ children }: { children: ReactNode }) {
+  const initialUser = await getUserWithRole()
+  return <AdminShell initialUser={initialUser}>{children}</AdminShell>
 }

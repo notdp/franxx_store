@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -8,14 +8,21 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Menu, LogOut, Shield, User as UserIcon } from 'lucide-react'
+import type { User } from '@/types'
 
-export function SiteHeader() {
+// 接受服务端注入的用户，减少对全局 AuthProvider 的硬依赖
+export function SiteHeader({ initialUser }: { initialUser?: User | null } = {}) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user: ctxUser, logout } = useAuth()
   const [open, setOpen] = useState(false)
+  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false)
   const hidden = pathname?.startsWith('/admin')
+
+  // Prefer live client context when available; fall back to SSR user.
+  const user = ctxUser ?? initialUser
 
   const isActive = (href: string) => (pathname === href || pathname?.startsWith(href + '/'))
 
@@ -24,7 +31,7 @@ export function SiteHeader() {
       { label: '首页', href: '/' },
       { label: 'FAQ', href: '/faq' },
     ]
-    if (user) items.splice(1, 0, { label: '我的订单', href: '/orders' })
+    if (user) items.splice(1, 0, { label: '仪表盘', href: '/orders' })
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin'
     if (isAdmin) items.push({ label: '后台', href: '/admin' })
     return items
@@ -33,7 +40,6 @@ export function SiteHeader() {
   const handleLogout = async () => {
     try {
       await logout()
-      router.push('/')
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('logout failed', e)
@@ -63,6 +69,7 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className={
                 'px-3 py-2 rounded-md transition-colors ' +
                 (isActive(item.href) ? 'text-primary bg-accent' : 'text-muted-foreground hover:text-foreground')
@@ -112,7 +119,13 @@ export function SiteHeader() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                <DropdownMenuItem
+                  className="text-red-600"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setConfirmLogoutOpen(true);
+                  }}
+                >
                   <LogOut className="w-4 h-4 mr-2" /> 退出登录
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -137,6 +150,7 @@ export function SiteHeader() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   onClick={() => setOpen(false)}
                   className={
                     'px-3 py-2 rounded-md transition-colors ' +
@@ -155,6 +169,28 @@ export function SiteHeader() {
           </SheetContent>
         </Sheet>
       </div>
+      {/* Confirm Logout Dialog mounted outside Dropdown to avoid unmount */}
+      <AlertDialog open={confirmLogoutOpen} onOpenChange={setConfirmLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认退出登录？</AlertDialogTitle>
+            <AlertDialogDescription>
+              退出后将无法访问仪表盘等需要登录的页面。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmLogoutOpen(false)
+                await handleLogout()
+              }}
+            >
+              确认退出
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   )
 }

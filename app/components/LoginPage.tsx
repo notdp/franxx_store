@@ -30,7 +30,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
     } catch (error: any) {
       console.error(`${provider} login error:`, error);
       setError(error.message || `${provider} 登录失败，请重试`);
-    } finally {
+      // 仅在发生错误时恢复按钮状态
       setLoading(null);
     }
   };
@@ -198,7 +198,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
                     size="lg"
                   >
                     {loading === 'google' ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     ) : (
                       <Chrome className="w-5 h-5 mr-2" />
                     )}
@@ -213,7 +213,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
                     size="lg"
                   >
                     {loading === 'github' ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     ) : (
                       <Github className="w-5 h-5 mr-2" />
                     )}

@@ -23,9 +23,6 @@ class ApiClient {
         } else {
           throw new Error('Authentication required');
         }
-      } else {
-        const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-        headers['Authorization'] = `Bearer ${anon}`;
       }
 
       return headers;

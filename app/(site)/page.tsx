@@ -7,7 +7,7 @@ export default function Home() {
   const router = useRouter()
 
   const handleSelectPackage = (packageId: string) => {
-    router.push(`/order?package=${packageId}`)
+    router.push(`/orders/new?package=${packageId}`)
   }
 
   return (
@@ -16,4 +16,3 @@ export default function Home() {
     </div>
   )
 }
-
